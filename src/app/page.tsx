@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { documents, getUniqueBranches, getDocumentsByBranch } from "@/data/documents";
 import { searchDocuments, type SearchResult } from "@/lib/search";
@@ -17,6 +17,7 @@ export default function Home() {
   const [hasSearched, setHasSearched] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function performSearch(q: string) {
     if (!q.trim()) {
@@ -39,14 +40,45 @@ export default function Home() {
     setIsLoading(false);
   }
 
+  // Debounced auto-search: triggers 3s after the user stops typing
+  const debouncedSearch = (q: string) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    if (!q.trim()) {
+      setResults([]);
+      setHasSearched(false);
+      return;
+    }
+    debounceRef.current = setTimeout(() => {
+      performSearch(q);
+    }, 3000);
+  };
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setQuery(val);
+    debouncedSearch(val);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
+      // Cancel any pending debounce and search immediately
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       performSearch(query);
       inputRef.current?.blur();
     }
   }
 
   function handleClear() {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setQuery("");
     setResults([]);
     setHasSearched(false);
@@ -138,7 +170,7 @@ export default function Home() {
                 ref={inputRef}
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={handleChange}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 onKeyDown={handleKeyDown}
@@ -149,7 +181,7 @@ export default function Home() {
               />
               {isFocused && !query.trim() && (
                 <span className="mr-6 hidden text-xs text-muted-foreground/40 sm:inline">
-                  Press Enter
+                  {results.length > 0 ? "Searching..." : "Press Enter or wait"}
                 </span>
               )}
               {query && (
@@ -283,6 +315,7 @@ export default function Home() {
               <>
                 <p className="mb-6 text-sm text-muted-foreground">
                   {results.length} result{results.length !== 1 ? "s" : ""}
+                  {isFocused && query.trim() && <span className="ml-2 text-muted-foreground/40">· auto-searching in 3s</span>}
                 </p>
                 <PaginatedGrid
                   items={results}
