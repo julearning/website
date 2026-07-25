@@ -264,6 +264,19 @@ export default function Home() {
           <p className="mt-1 text-[11px] text-muted-foreground/40 transition-colors duration-300 group-hover:text-white/50">
             {formatDate(doc.uploadedAt)}
           </p>
+          {doc.contributor && (
+            <div className="mt-2 flex items-center gap-1.5">
+              <img
+                src={`https://github.com/${doc.contributor}.png?size=20`}
+                alt={doc.contributor}
+                className="h-3.5 w-3.5"
+                loading="lazy"
+              />
+              <span className="text-[10px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/60">
+                {doc.contributor}
+              </span>
+            </div>
+          )}
         </div>
       </a>
     );
