@@ -1,83 +1,85 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpen, Monitor, Radio, Zap, Cog, Compass } from "lucide-react";
 import { BRANCHES } from "@/lib/types";
 import { documents, getUniqueSemesters } from "@/data/documents";
 import { BRANCH_IMAGES } from "@/lib/images";
+import { Navbar } from "@/components/Navbar";
+
+const BRANCH_ICONS: Record<string, React.ReactNode> = {
+  CSE: <Monitor className="h-5 w-5" />,
+  ECE: <Radio className="h-5 w-5" />,
+  EE: <Zap className="h-5 w-5" />,
+  ME: <Cog className="h-5 w-5" />,
+  CE: <Compass className="h-5 w-5" />,
+};
 
 export default function BrowsePage() {
-
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-5 sm:px-10">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500">
-            <span className="text-xs font-bold text-black">JU</span>
-          </div>
-          <span className="text-sm font-bold text-white">JU Learning</span>
-        </Link>
-        <Link href="/about" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">About</Link>
-      </div>
+      <Navbar />
 
-      {/* Title */}
-      <div className="px-6 sm:px-10 pt-8 pb-12">
-        <p className="text-xs font-medium tracking-widest text-amber-500 uppercase">Browse</p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-          Choose your<br />
-          <span className="text-zinc-500">branch</span>
-        </h1>
-      </div>
+      <div className="mx-auto max-w-6xl px-4 pt-12 pb-24 sm:px-6">
+        <div className="mb-10">
+          <p className="font-heading text-xs font-medium tracking-widest text-brand uppercase">Browse</p>
+          <h1 className="font-heading mt-2 text-3xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-4xl">
+            Choose a branch
+          </h1>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            Select your branch to filter notes, PYQs, and assignments by semester and subject.
+          </p>
+        </div>
 
-      {/* Magazine-style branch grid */}
-      <div className="px-6 sm:px-10 pb-24">
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {BRANCHES.map((branch, i) => {
             const branchDocs = documents.filter((d) => d.branch === branch.id);
             const semesters = getUniqueSemesters(branch.id);
             const subjectCount = [...new Set(branchDocs.map((d) => d.subject))].length;
-
-            const isLarge = i === 0;
+            const isFeatured = i === 0;
 
             return (
               <Link
                 key={branch.id}
                 href={`/browse/${branch.id.toLowerCase()}`}
-                className={`group relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 transition-all hover:border-amber-500/30 ${
-                  isLarge ? "sm:col-span-2 sm:row-span-1" : ""
+                className={`group relative overflow-hidden rounded-2xl bg-surface transition-all hover:bg-surface-elevated ${
+                  isFeatured ? "sm:col-span-2" : ""
                 }`}
               >
-                {/* Background image */}
                 <div className="absolute inset-0">
                   <img
                     src={BRANCH_IMAGES[branch.id]}
                     alt=""
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/30" />
                 </div>
 
-                {/* Content */}
-                <div className="relative flex h-full min-h-[320px] flex-col justify-end p-6 sm:p-8">
-                  <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-400 backdrop-blur-sm w-fit">
-                    {subjectCount} subjects
+                <div className="relative flex h-full min-h-[280px] flex-col justify-end p-6 sm:p-8">
+                  <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1 text-xs font-medium text-brand backdrop-blur-sm w-fit">
+                    <BookOpen className="h-3 w-3" />
+                    {subjectCount} {subjectCount === 1 ? "subject" : "subjects"}
                   </div>
-                  <h2 className="text-3xl font-bold text-white sm:text-4xl">{branch.id}</h2>
-                  <p className="mt-2 max-w-xs text-sm leading-relaxed text-white/60">
-                    {branch.name}
-                  </p>
-                  <div className="mt-4 flex items-center gap-3">
+
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white">
+                      {BRANCH_ICONS[branch.id]}
+                    </div>
+                    <h2 className="font-heading text-2xl font-bold text-white sm:text-3xl">{branch.id}</h2>
+                  </div>
+                  <p className="max-w-xs text-sm text-white/50">{branch.name}</p>
+
+                  <div className="mt-3 flex items-center gap-3">
                     <div className="flex flex-wrap gap-1.5">
                       {semesters.map((sem) => (
-                        <span key={sem} className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/70 backdrop-blur-sm">
+                        <span key={sem} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/60">
                           S{sem}
                         </span>
                       ))}
                     </div>
-                    <span className="text-xs text-white/40">{branchDocs.length} documents</span>
+                    <span className="text-xs text-white/35">{branchDocs.length} docs</span>
                   </div>
-                  <div className="mt-4 flex items-center gap-1.5 text-xs font-medium text-amber-400 transition-all group-hover:gap-2.5">
-                    Browse {branch.id} <ArrowRight className="h-3 w-3" />
+
+                  <div className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand transition-all group-hover:gap-2.5">
+                    Browse <ArrowRight className="h-3 w-3" />
                   </div>
                 </div>
               </Link>
@@ -86,8 +88,7 @@ export default function BrowsePage() {
         </div>
       </div>
 
-      {/* Minimal footer */}
-      <footer className="border-t border-zinc-800 py-6 text-center text-xs text-zinc-600">
+      <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground/40">
         JU Learning — Open source study materials.
       </footer>
     </div>

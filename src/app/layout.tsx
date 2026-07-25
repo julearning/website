@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const geist = Geist({
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-heading",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -18,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s — JU Learning",
   },
   description:
-    "Open source study materials for B.Tech students. Search notes, PYQs, lab manuals, and assignments.",
+    "Open source study materials for B.Tech students. Search notes, PYQs, lab manuals, and assignments across all branches.",
   metadataBase: new URL("https://julearning.vercel.app"),
 };
 
@@ -28,11 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="flex min-h-full flex-col bg-background text-foreground">
+    <html lang="en" className={`${geist.variable} ${plusJakartaSans.variable}`}>
+      <body className="grain min-h-screen bg-background text-foreground antialiased">
         {children}
       </body>
     </html>

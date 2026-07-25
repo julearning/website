@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, ArrowRight, BookOpen, Sparkles } from "lucide-react";
+import { Search, ArrowRight, BookOpen, FileText } from "lucide-react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { documents } from "@/data/documents";
@@ -11,9 +11,23 @@ import type { FilterState } from "@/lib/types";
 import { SearchBar } from "@/components/search/search-bar";
 import { SearchResults } from "@/components/search/search-results";
 import { FilterBar } from "@/components/search/filter-bar";
+import { Navbar } from "@/components/Navbar";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
+}
+
+const BRANCH_INFO: { id: string; name: string; icon: typeof BookOpen }[] = [
+  { id: "CSE", name: "Computer Science & Engineering", icon: BookOpen },
+  { id: "ECE", name: "Electronics & Communication", icon: BookOpen },
+  { id: "EE", name: "Electrical Engineering", icon: BookOpen },
+  { id: "ME", name: "Mechanical Engineering", icon: BookOpen },
+  { id: "CE", name: "Civil Engineering", icon: BookOpen },
+];
+
+const branchDocCounts: Record<string, number> = {};
+for (const b of BRANCH_INFO) {
+  branchDocCounts[b.id] = documents.filter((d) => d.branch === b.id).length;
 }
 
 export default function Home() {
@@ -35,14 +49,14 @@ export default function Home() {
     if (!hero || !content) return;
 
     const ctx = gsap.context(() => {
-      gsap.from(content, { y: 60, opacity: 0, duration: 1, ease: "power4.out" });
-      gsap.to(".hero-overlay", {
-        y: -80, ease: "none",
-        scrollTrigger: { trigger: hero, start: "top top", end: "bottom top", scrub: 2 },
+      gsap.from(content, { y: 40, opacity: 0, duration: 1, ease: "power3.out" });
+      gsap.to(".hero-bg", {
+        y: -40, scale: 1.03, ease: "none",
+        scrollTrigger: { trigger: hero, start: "top top", end: "bottom top", scrub: 1.5 },
       });
       gsap.to(content, {
-        y: 40, opacity: 0.4, ease: "none",
-        scrollTrigger: { trigger: hero, start: "top top", end: "bottom top", scrub: 1.5 },
+        y: 30, opacity: 0.3, ease: "none",
+        scrollTrigger: { trigger: hero, start: "top top", end: "bottom top", scrub: 1 },
       });
     }, hero);
 
@@ -75,92 +89,74 @@ export default function Home() {
   return (
     <>
       {/* ─── Hero ─── */}
-      <div ref={heroRef} className="relative min-h-[90dvh] flex flex-col overflow-hidden">
-        {/* Background image with overlay */}
-        <div className="hero-overlay absolute inset-0">
+      <div ref={heroRef} className="relative min-h-[85dvh] flex flex-col overflow-hidden">
+        {/* Background */}
+        <div className="hero-bg absolute inset-0">
           <img
             src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=1600&q=80"
             alt=""
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-background" />
-          <div className="absolute inset-0 hero-grain" />
         </div>
 
-        {/* Header */}
-        <div className="relative z-10 flex items-center justify-between px-6 py-5 sm:px-10">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500 shadow-lg shadow-amber-500/20">
-              <BookOpen className="h-5 w-5 text-black" />
+        <div className="relative z-10">
+          <Navbar />
+        </div>
+
+        {/* Hero content — left-aligned */}
+        <div ref={contentRef} className="relative z-10 flex flex-1 flex-col justify-center px-6 pb-20 sm:px-12">
+          <div className="mx-auto w-full max-w-6xl">
+            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1 text-xs font-medium text-brand">
+              <FileText className="h-3 w-3" />
+              {documents.length} open source documents
             </div>
-            <span className="text-base font-bold tracking-tight text-white">JU Learning</span>
-          </div>
-          <nav className="flex items-center gap-1">
-            <a href="/browse" className="px-3.5 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors">Browse</a>
-            <a href="/about" className="px-3.5 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors">About</a>
-            <a href="https://github.com/JU-Learning/julearning" target="_blank" rel="noopener noreferrer" className="ml-2 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white/70 hover:text-white hover:border-white/40 transition-colors">
-              GitHub
-            </a>
-          </nav>
-        </div>
 
-        {/* Hero Content */}
-        <div ref={contentRef} className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-24 text-center">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/60 backdrop-blur-sm">
-            <Sparkles className="h-3 w-3 text-amber-400" />
-            {documents.length} open source study documents
-          </div>
+            <h1 className="font-heading max-w-3xl text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-7xl">
+              Study materials,
+              <br />
+              <span className="text-brand">for everyone.</span>
+            </h1>
 
-          <h1 className="max-w-4xl text-5xl font-bold tracking-tight text-white sm:text-7xl lg:text-8xl">
-            Study smarter,<br />
-            <span className="text-amber-400">together.</span>
-          </h1>
+            <p className="mt-4 max-w-lg text-base leading-relaxed text-white/45 sm:text-lg">
+              Search notes, PYQs, lab manuals, and assignments across all B.Tech branches. Built by students, for students.
+            </p>
 
-          <p className="mt-5 max-w-lg text-base leading-relaxed text-white/60 sm:text-lg">
-            Search notes, PYQs, lab manuals, and assignments across all B.Tech branches. Free, open source, built by students.
-          </p>
+            <div className="mt-8 w-full max-w-lg">
+              <SearchBar
+                value={query}
+                onChange={setQuery}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                isFocused={isFocused}
+                variant="hero"
+              />
+            </div>
 
-          <div className="mt-10 w-full max-w-xl">
-            <SearchBar
-              value={query}
-              onChange={setQuery}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              isFocused={isFocused}
-              variant="hero"
-            />
-          </div>
-
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs text-white/40">
-            {["CSE", "ECE", "EE", "ME", "CE"].map((b) => (
-              <a key={b} href={`/browse/${b.toLowerCase()}`} className="transition-colors hover:text-white/70">
-                {b}
-              </a>
-            ))}
-            <span className="text-white/20">|</span>
-            <span>8 semesters</span>
-          </div>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className="relative z-10 flex justify-center pb-8">
-          <div className="h-8 w-5 rounded-full border border-white/20 flex items-start justify-center p-1">
-            <div className="h-2 w-1 rounded-full bg-white/40 animate-bounce" />
+            <div className="mt-6 flex items-center gap-4 text-xs text-white/30">
+              <span className="text-white/20">Quick links:</span>
+              {BRANCH_INFO.filter((b) => branchDocCounts[b.id] > 0).map((b) => (
+                <a key={b.id} href={`/browse/${b.id.toLowerCase()}`} className="transition-colors hover:text-white/60">
+                  {b.id}
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* ─── Results ─── */}
-      <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6">
+      <div className="relative mx-auto max-w-4xl px-4 sm:px-6">
         <AnimatePresence>
           {(query || hasActiveFilters || isFocused) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
               className="pb-24"
             >
-              <div className="mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 backdrop-blur-sm">
+              <div className="mb-6 rounded-2xl bg-surface p-5">
                 <FilterBar filters={filters} onFilterChange={setFilters} />
               </div>
               <SearchResults results={results} query={query} isLoading={isLoading} hasFilters={hasActiveFilters} />
@@ -169,27 +165,32 @@ export default function Home() {
         </AnimatePresence>
       </div>
 
-      {/* ─── Browse Teaser ─── */}
+      {/* ─── Browse teaser ─── */}
       {!query && !hasActiveFilters && !isFocused && (
-        <div className="relative z-10 mx-auto max-w-5xl px-4 pb-32 sm:px-6">
-          <div className="mb-10 text-center">
-            <h2 className="text-2xl font-bold text-white sm:text-3xl">Browse by branch</h2>
-            <p className="mt-2 text-sm text-zinc-500">Pick your branch and start finding what you need.</p>
+        <div className="relative mx-auto max-w-6xl px-4 pb-32 sm:px-6">
+          <div className="mb-10">
+            <h2 className="font-heading text-2xl font-bold text-foreground sm:text-3xl">Browse by branch</h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">Pick your branch and start finding what you need.</p>
           </div>
+
           <div className="grid gap-3 sm:grid-cols-5">
-            {["CSE", "ECE", "EE", "ME", "CE"].map((branch, i) => (
+            {BRANCH_INFO.filter((b) => branchDocCounts[b.id] > 0).map((branch, i) => (
               <motion.a
-                key={branch}
-                href={`/browse/${branch.toLowerCase()}`}
-                initial={{ opacity: 0, y: 20 }}
+                key={branch.id}
+                href={`/browse/${branch.id.toLowerCase()}`}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * i, duration: 0.4 }}
-                className="group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 text-center transition-all hover:border-amber-500/30 hover:bg-zinc-900"
+                transition={{ delay: 0.06 * i, duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+                className="group rounded-2xl bg-surface p-6 text-center transition-all hover:bg-surface-elevated"
               >
-                <div className="text-3xl mb-2">{["💻", "📡", "⚡", "⚙️", "🏗️"][i]}</div>
-                <div className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors">{branch}</div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  {documents.filter(d => d.branch === branch).length} docs
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-subtle transition-colors group-hover:bg-brand/20">
+                  <BookOpen className="h-5 w-5 text-brand" />
+                </div>
+                <div className="font-heading text-lg font-bold text-foreground transition-colors group-hover:text-brand">
+                  {branch.id}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {branchDocCounts[branch.id]} {branchDocCounts[branch.id] === 1 ? "doc" : "docs"}
                 </div>
               </motion.a>
             ))}
@@ -197,9 +198,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-zinc-800 py-8 text-center text-xs text-zinc-600">
-        JU Learning — Open source study materials. Built by students, for students.
+      <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground/40">
+        JU Learning — Open source study materials.
       </footer>
     </>
   );

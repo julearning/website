@@ -9,13 +9,17 @@ import { searchDocuments, type SearchResult } from "@/lib/search";
 import type { FilterState, Branch, Semester } from "@/lib/types";
 import { SearchResults } from "@/components/search/search-results";
 import { FilterBar } from "@/components/search/filter-bar";
+import { SearchBar } from "@/components/search/search-bar";
+import { Navbar } from "@/components/Navbar";
 
 function SearchContent() {
   const searchParams = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get("q") || "");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFocused, setIsFocused] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
-    query: "",
+    query: searchParams.get("q") || "",
     branch: (searchParams.get("branch") as Branch) || null,
     semester: searchParams.get("semester") ? (Number(searchParams.get("semester")) as Semester) : null,
     subject: searchParams.get("subject") || null,
@@ -26,42 +30,53 @@ function SearchContent() {
     const branch = searchParams.get("branch") as Branch | null;
     const semester = searchParams.get("semester") ? (Number(searchParams.get("semester")) as Semester) : null;
     const subject = searchParams.get("subject") || null;
-    setFilters((prev) => ({ ...prev, branch: branch || prev.branch, semester: semester || prev.semester, subject: subject || prev.subject }));
+    setFilters((prev) => ({
+      ...prev,
+      query: searchParams.get("q") || prev.query,
+      branch: branch || prev.branch,
+      semester: semester || prev.semester,
+      subject: subject || prev.subject,
+    }));
   }, [searchParams]);
 
   useEffect(() => {
     setIsLoading(true);
-    setResults(searchDocuments(documents, filters));
-    setIsLoading(false);
-  }, [filters]);
+    const timer = setTimeout(() => {
+      setResults(searchDocuments(documents, { ...filters, query }));
+      setIsLoading(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [filters, query]);
 
   const hasActiveFilters = !!(filters.branch || filters.semester || filters.subject || filters.tags.length > 0);
-  const title = [filters.branch || "All", filters.semester ? `Sem ${filters.semester}` : null, filters.subject || null].filter(Boolean).join(" — ");
+  const titleParts = [filters.branch || null, filters.semester ? `Sem ${filters.semester}` : null, filters.subject || null].filter(Boolean);
+  const title = titleParts.length > 0 ? titleParts.join(" — ") : "Search";
 
   return (
     <div className="min-h-screen">
-      <div className="flex items-center justify-between px-6 py-5 sm:px-10">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500">
-            <span className="text-xs font-bold text-black">JU</span>
-          </div>
-          <span className="text-sm font-bold text-white">JU Learning</span>
-        </Link>
-      </div>
+      <Navbar />
 
-      <div className="mx-auto max-w-4xl px-6 sm:px-10 py-8">
-        <Link href="/" className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-6">
-          <ArrowLeft className="h-3 w-3" /> Back
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+        <Link href="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6">
+          <ArrowLeft className="h-3 w-3" />
+          Back
         </Link>
 
-        <h1 className="text-2xl font-bold text-white">{title}</h1>
-        <p className="mt-2 text-sm text-zinc-500">{results.length} result{results.length !== 1 ? "s" : ""}</p>
+        <div className="mb-6">
+          <h1 className="font-heading text-2xl font-bold text-foreground sm:text-3xl">{title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{results.length} {results.length === 1 ? "result" : "results"}</p>
+        </div>
 
-        <div className="mt-8 mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
+        <div className="mb-5">
+          <SearchBar value={query} onChange={(v) => { setQuery(v); setFilters((prev) => ({ ...prev, query: v })); }}
+            onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} isFocused={isFocused} variant="compact" />
+        </div>
+
+        <div className="mb-6 rounded-2xl bg-surface p-4">
           <FilterBar filters={filters} onFilterChange={setFilters} />
         </div>
 
-        <SearchResults results={results} query="" isLoading={isLoading} hasFilters={hasActiveFilters} />
+        <SearchResults results={results} query={query} isLoading={isLoading} hasFilters={hasActiveFilters} />
       </div>
     </div>
   );
@@ -72,8 +87,8 @@ export default function SearchPage() {
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 w-48 rounded-lg bg-zinc-800" />
-          <div className="h-4 w-32 rounded-lg bg-zinc-800" />
+          <div className="h-8 w-48 rounded-lg bg-muted" />
+          <div className="h-4 w-32 rounded-lg bg-muted" />
         </div>
       </div>
     }>
