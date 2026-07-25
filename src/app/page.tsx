@@ -346,141 +346,20 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Browse sections — shown when nothing is searched */}
-        {!hasSearched && (
-          <div className="space-y-20">
-            {/* Category Sections: PYQs, Handwritten, Digital Notes */}
-            {categoryDocs.map((cat) =>
-              cat.docs.length > 0 ? (
-                <section key={cat.tag}>
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-foreground">{cat.title}</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">{cat.subtitle}</p>
-                  </div>
-                  <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
-                    {cat.docs.map((doc) => (
-                      <CategoryCard key={doc.id} doc={doc} />
-                    ))}
-                  </div>
-                </section>
-              ) : null
-            )}
-
-            {/* Contributors */}
-            {topContributors.length > 0 && (
-              <section>
-                <h2 className="mb-6 text-lg font-semibold text-foreground">Top Contributors</h2>
-                <p className="mb-4 text-sm text-muted-foreground">Students who have shared study materials with the community.</p>
-                <div className="flex flex-wrap gap-3">
-                  {topContributors.map(({ username, count }) => (
-                    <ContributorCard key={username} username={username} count={count} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Recently Added */}
-            <section>
-              <h2 className="mb-6 text-lg font-semibold text-foreground">Recently Added</h2>
-              <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
-                {recentDocs.map((doc) => (
-                  <CategoryCard key={doc.id} doc={doc} />
-                ))}
-              </div>
-            </section>
-
-            {/* Browse by Branch */}
-            <section>
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Browse by Branch</h2>
-                <Link href="/branches" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  View all →
-                </Link>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {branches.map((branch) => {
-                  const docCount = getDocumentsByBranch(branch).length;
-                  const semesters = [...new Set(getDocumentsByBranch(branch).map((d) => d.semester))].sort();
-
-                  return (
-                    <Link
-                      key={branch}
-                      href={`/branches/${branch.toLowerCase()}`}
-                      className="group bg-white p-7 transition-all duration-300 hover:bg-brand"
-                    >
-                      <p className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{branch}</p>
-                      <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
-                        {docCount} documents · {semesters.length} semesters
-                      </p>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* Browse by Semester */}
-            <section>
-              <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Semester</h2>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
-                {allSemesters.map((sem) => {
-                  const docCount = documents.filter((d) => d.semester === sem).length;
-                  return (
-                    <button
-                      key={sem}
-                      onClick={() => {
-                        setQuery(`semester ${sem}`);
-                        performSearch(`semester ${sem}`);
-                      }}
-                      className="group bg-white p-6 text-center transition-all duration-300 hover:bg-brand"
-                    >
-                      <p className="text-2xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{sem}</p>
-                      <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} docs</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* Browse by Subject */}
-            <section>
-              <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Subject</h2>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {topSubjects.map((subject) => {
-                  const docCount = documents.filter((d) => d.subject === subject).length;
-                  return (
-                    <button
-                      key={subject}
-                      onClick={() => {
-                        setQuery(subject);
-                        performSearch(subject);
-                      }}
-                      className="group bg-white p-6 text-left transition-all duration-300 hover:bg-brand"
-                    >
-                      <p className="text-base font-medium text-foreground transition-colors duration-300 group-hover:text-white">{subject}</p>
-                      <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} documents</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          </div>
-        )}
+        {/* Sort & Filter toolbar — always visible, right below the search bar */}
+        <div className="flex items-center justify-end gap-1 border-b border-border/10 pb-4">
+          <SortDropdown value={sort} onChange={handleSortChange} />
+          <FilterDropdown activeTags={activeTags} onChange={handleTagsChange} />
+        </div>
 
         {/* Search results */}
         {hasSearched && (
-          <div className="mt-10">
-            {/* Results toolbar: count on left, sort+filter on right */}
+          <div className="mt-8">
             {!isLoading && (
-              <div className="mb-6 flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {results.length} result{results.length !== 1 ? "s" : ""}
-                  {isFocused && query.trim() && <span className="ml-2 text-muted-foreground/40">· auto-searching in 3s</span>}
-                </p>
-                <div className="flex items-center gap-1">
-                  <SortDropdown value={sort} onChange={handleSortChange} />
-                  <FilterDropdown activeTags={activeTags} onChange={handleTagsChange} />
-                </div>
-              </div>
+              <p className="mb-4 text-sm text-muted-foreground">
+                {results.length} result{results.length !== 1 ? "s" : ""}
+                {isFocused && query.trim() && <span className="ml-2 text-muted-foreground/40">· auto-searching in 3s</span>}
+              </p>
             )}
 
             {isLoading ? (
@@ -505,6 +384,124 @@ export default function Home() {
             )}
           </div>
         )}
+
+        {/* Browse sections — always visible below search results */}
+        <div className="mt-16 space-y-20">
+          {/* Category Sections: PYQs, Handwritten, Digital Notes */}
+          {categoryDocs.map((cat) =>
+            cat.docs.length > 0 ? (
+              <section key={cat.tag}>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-foreground">{cat.title}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{cat.subtitle}</p>
+                </div>
+                <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
+                  {cat.docs.map((doc) => (
+                    <CategoryCard key={doc.id} doc={doc} />
+                  ))}
+                </div>
+              </section>
+            ) : null
+          )}
+
+          {/* Contributors */}
+          {topContributors.length > 0 && (
+            <section>
+              <h2 className="mb-6 text-lg font-semibold text-foreground">Top Contributors</h2>
+              <p className="mb-4 text-sm text-muted-foreground">Students who have shared study materials with the community.</p>
+              <div className="flex flex-wrap gap-3">
+                {topContributors.map(({ username, count }) => (
+                  <ContributorCard key={username} username={username} count={count} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Recently Added */}
+          <section>
+            <h2 className="mb-6 text-lg font-semibold text-foreground">Recently Added</h2>
+            <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
+              {recentDocs.map((doc) => (
+                <CategoryCard key={doc.id} doc={doc} />
+              ))}
+            </div>
+          </section>
+
+          {/* Browse by Branch */}
+          <section>
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Browse by Branch</h2>
+              <Link href="/branches" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                View all →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {branches.map((branch) => {
+                const docCount = getDocumentsByBranch(branch).length;
+                const semesters = [...new Set(getDocumentsByBranch(branch).map((d) => d.semester))].sort();
+
+                return (
+                  <Link
+                    key={branch}
+                    href={`/branches/${branch.toLowerCase()}`}
+                    className="group bg-white p-7 transition-all duration-300 hover:bg-brand"
+                  >
+                    <p className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{branch}</p>
+                    <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+                      {docCount} documents · {semesters.length} semesters
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Browse by Semester */}
+          <section>
+            <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Semester</h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
+              {allSemesters.map((sem) => {
+                const docCount = documents.filter((d) => d.semester === sem).length;
+                return (
+                  <button
+                    key={sem}
+                    onClick={() => {
+                      setQuery(`semester ${sem}`);
+                      performSearch(`semester ${sem}`);
+                    }}
+                    className="group bg-white p-6 text-center transition-all duration-300 hover:bg-brand"
+                  >
+                    <p className="text-2xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{sem}</p>
+                    <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} docs</p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Browse by Subject */}
+          <section>
+            <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Subject</h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {topSubjects.map((subject) => {
+                const docCount = documents.filter((d) => d.subject === subject).length;
+                return (
+                  <button
+                    key={subject}
+                    onClick={() => {
+                      setQuery(subject);
+                      performSearch(subject);
+                    }}
+                    className="group bg-white p-6 text-left transition-all duration-300 hover:bg-brand"
+                  >
+                    <p className="text-base font-medium text-foreground transition-colors duration-300 group-hover:text-white">{subject}</p>
+                    <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} documents</p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </div>
       </main>
     </>
   );
