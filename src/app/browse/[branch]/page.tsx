@@ -1,9 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Monitor, Radio, Zap, Cog, HardHat, BookOpen } from "lucide-react";
-import {
-  getDocumentsByBranch,
-} from "@/data/documents";
+import { getDocumentsByBranch } from "@/data/documents";
 import type { Branch } from "@/lib/types";
 
 const BRANCH_MAP: Record<string, Branch> = {
@@ -24,6 +23,17 @@ const BRANCH_INFO: Record<Branch, { name: string; icon: typeof BookOpen }> = {
 
 export function generateStaticParams() {
   return Object.keys(BRANCH_MAP).map((slug) => ({ branch: slug }));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ branch: string }> }): Promise<Metadata> {
+  const { branch: branchSlug } = await params;
+  const branch = BRANCH_MAP[branchSlug];
+  if (!branch) return { title: "Not Found" };
+  const count = getDocumentsByBranch(branch).length;
+  return {
+    title: `${BRANCH_INFO[branch]?.name || branch} — JU Learning`,
+    description: `Browse ${count} study materials for ${BRANCH_INFO[branch]?.name || branch}. Notes, PYQs, and more across all semesters.`,
+  };
 }
 
 export default async function BranchPage({

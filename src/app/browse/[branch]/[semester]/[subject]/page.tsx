@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BookOpen, Monitor, Radio, Zap, Cog, HardHat } from "lucide-react";
@@ -37,6 +38,19 @@ export async function generateStaticParams() {
     seen.add(key);
     return true;
   });
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ branch: string; semester: string; subject: string }> }): Promise<Metadata> {
+  const { branch: branchSlug, semester: semStr, subject: subjectEncoded } = await params;
+  const branch = BRANCH_MAP[branchSlug];
+  const semester = Number(semStr);
+  const subject = decodeURIComponent(subjectEncoded);
+  if (!branch || isNaN(semester)) return { title: "Not Found" };
+  const count = documents.filter((d) => d.branch === branch && d.semester === semester && d.subject === subject).length;
+  return {
+    title: `${subject} — ${branch} Semester ${semester} — JU Learning`,
+    description: `Browse ${count} study materials for ${subject} — ${branch} Semester ${semester}. Notes, PYQs, assignments, and more.`,
+  };
 }
 
 export default async function SubjectPage({

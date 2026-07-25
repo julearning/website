@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpen, Monitor, Zap, Cog, HardHat, Radio } from "lucide-react";
 import { getUniqueBranches, getDocumentsByBranch } from "@/data/documents";
 import type { Branch } from "@/lib/types";
+
+export const metadata: Metadata = {
+  title: "Browse — JU Learning",
+  description: "Browse B.Tech study materials by engineering branch. Access notes, PYQs, lab manuals, and more for CSE, ECE, EE, ME, and CE.",
+};
 
 const BRANCH_INFO: Record<Branch, { name: string; description: string; icon: typeof BookOpen }> = {
   CSE: { name: "Computer Science & Engineering", description: "Software, algorithms, AI, and computing systems", icon: Monitor },
