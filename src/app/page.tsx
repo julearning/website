@@ -5,6 +5,7 @@ import Link from "next/link";
 import { documents, getUniqueBranches, getDocumentsByBranch } from "@/data/documents";
 import { searchDocuments, type SearchResult } from "@/lib/search";
 import type { FilterState, Branch, Document } from "@/lib/types";
+import { getThumbnailUrl } from "@/lib/types";
 import { Navbar } from "@/components/Navbar";
 import { ResultCard } from "@/components/ResultCard";
 import { PaginatedGrid } from "@/components/PaginatedGrid";
@@ -73,6 +74,50 @@ export default function Home() {
     }
   }
 
+  function RecentCard({ doc }: { doc: Document }) {
+    const [imgFailed, setImgFailed] = useState(false);
+    const thumb = getThumbnailUrl(doc.url);
+    const showThumb = thumb && !imgFailed;
+
+    return (
+      <a
+        href={doc.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group block break-inside-avoid bg-white transition-all duration-300 hover:bg-brand mb-5"
+      >
+        <div className="relative overflow-hidden bg-accent">
+          {showThumb ? (
+            <img
+              src={thumb}
+              alt={doc.title}
+              className="w-full transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+              onError={() => setImgFailed(true)}
+            />
+          ) : (
+            <div className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
+              <span className="text-3xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
+                {doc.title.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="p-4 transition-colors duration-300">
+          <p className="text-sm font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-white">
+            {doc.title}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70">
+            {doc.branch} S{doc.semester} · {doc.subject}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground/40 transition-colors duration-300 group-hover:text-white/50">
+            {formatDate(doc.uploadedAt)}
+          </p>
+        </div>
+      </a>
+    );
+  }
+
   return (
     <>
       <Navbar />
@@ -125,27 +170,9 @@ export default function Home() {
             {/* Recently Added */}
             <section>
               <h2 className="mb-6 text-lg font-semibold text-foreground">Recently Added</h2>
-              <div className="space-y-3">
+              <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
                 {recentDocs.map((doc) => (
-                  <a
-                    key={doc.id}
-                    href={doc.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex items-center gap-4 bg-white p-5 transition-all duration-300 hover:bg-brand"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
-                        {doc.title}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
-                        {doc.branch} · Semester {doc.semester} · {doc.subject}
-                      </p>
-                    </div>
-                    <p className="shrink-0 text-xs text-muted-foreground/40 transition-colors duration-300 group-hover:text-white/50">
-                      {formatDate(doc.uploadedAt)}
-                    </p>
-                  </a>
+                  <RecentCard key={doc.id} doc={doc} />
                 ))}
               </div>
             </section>
