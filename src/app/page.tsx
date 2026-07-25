@@ -104,7 +104,7 @@ export default function Home() {
           <div className="mt-16">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">Browse by Branch</h2>
-              <Link href="/browse" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+              <Link href="/branches" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                 View all →
               </Link>
             </div>
@@ -118,7 +118,7 @@ export default function Home() {
                 return (
                   <Link
                     key={branch}
-                    href={`/browse/${branch.toLowerCase()}`}
+                    href={`/branches/${branch.toLowerCase()}`}
                     className="group rounded-xl border border-border bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                   >
                     <div className="flex items-center gap-3">

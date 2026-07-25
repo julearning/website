@@ -6,6 +6,11 @@ import { usePathname } from "next/navigation";
 export function Navbar() {
   const pathname = usePathname();
 
+  const isActive = (path: string) =>
+    pathname.startsWith(path)
+      ? "text-foreground font-medium"
+      : "text-muted-foreground hover:text-foreground";
+
   return (
     <header className="py-6">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6">
@@ -16,19 +21,15 @@ export function Navbar() {
           JU Learning
         </Link>
 
-        <nav className="flex items-center gap-6">
-          <Link
-            href="/browse"
-            className={`text-sm transition-colors ${
-              pathname.startsWith("/browse")
-                ? "text-foreground font-medium"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Browse
+        <nav className="flex items-center gap-5">
+          <Link href="/branches" className={`text-sm transition-colors ${isActive("/branches")}`}>
+            Branches
+          </Link>
+          <Link href="/degree" className={`text-sm transition-colors ${isActive("/degree")}`}>
+            Degree
           </Link>
           <a
-            href="https://github.com/julearning/metadata"
+            href="https://github.com/julearning"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-muted-foreground transition-colors hover:text-foreground"

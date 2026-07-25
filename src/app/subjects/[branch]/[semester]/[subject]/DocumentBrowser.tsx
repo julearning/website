@@ -54,7 +54,6 @@ export function DocumentBrowser({ docs, subject }: Props) {
 
   return (
     <>
-      {/* Search within subject */}
       <div className="mb-6 max-w-md">
         <div className="flex items-center rounded-xl border border-border bg-white px-4 shadow-sm transition-shadow duration-200 focus-within:shadow-md focus-within:border-brand/50">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -70,16 +69,11 @@ export function DocumentBrowser({ docs, subject }: Props) {
         </div>
       </div>
 
-      {/* Section tabs */}
       {sections.length > 1 && (
         <div className="mb-6 flex flex-wrap gap-1.5">
           <button
             onClick={() => setActiveSection(null)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-              activeSection === null
-                ? "bg-foreground text-background"
-                : "bg-accent text-muted-foreground hover:text-foreground"
-            }`}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeSection === null ? "bg-foreground text-background" : "bg-accent text-muted-foreground hover:text-foreground"}`}
           >
             All ({docs.length})
           </button>
@@ -87,46 +81,30 @@ export function DocumentBrowser({ docs, subject }: Props) {
             <button
               key={sec}
               onClick={() => setActiveSection(sec)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                activeSection === sec
-                  ? "bg-foreground text-background"
-                  : "bg-accent text-muted-foreground hover:text-foreground"
-              }`}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeSection === sec ? "bg-foreground text-background" : "bg-accent text-muted-foreground hover:text-foreground"}`}
             >
-              {SECTION_LABELS[sec] || sec} (
-              {docs.filter((d) => d.section === sec).length})
+              {SECTION_LABELS[sec] || sec} ({docs.filter((d) => d.section === sec).length})
             </button>
           ))}
         </div>
       )}
 
-      {/* Tag filters */}
       {!query && !activeSection && (
         <div className="mb-6 flex flex-wrap gap-1.5">
           {Object.entries(tagCounts).map(([tag, count]) => (
-            <span
-              key={tag}
-              className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground"
-            >
+            <span key={tag} className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
               {tag.replace("-", " ")} ({count})
             </span>
           ))}
         </div>
       )}
 
-      {/* Results grid */}
       {filtered.length > 0 ? (
         <>
-          <p className="mb-4 text-sm text-muted-foreground">
-            {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-            {query && ` for "${query}"`}
-          </p>
+          <p className="mb-4 text-sm text-muted-foreground">{filtered.length} result{filtered.length !== 1 ? "s" : ""}{query && ` for "${query}"`}</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((doc) => (
-              <ResultCard
-                key={doc.id}
-                result={{ doc, score: 0 }}
-              />
+              <ResultCard key={doc.id} result={{ doc, score: 0 }} />
             ))}
           </div>
         </>
@@ -135,9 +113,7 @@ export function DocumentBrowser({ docs, subject }: Props) {
           <Search className="mb-4 h-10 w-10 text-muted-foreground/20" />
           <p className="text-base text-muted-foreground">No documents found</p>
           <p className="mt-1 text-sm text-muted-foreground/50">
-            {query
-              ? "Try a different search term."
-              : "No documents in this section yet."}
+            {query ? "Try a different search term." : "No documents in this section yet."}
           </p>
         </div>
       )}
