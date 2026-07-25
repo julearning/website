@@ -35,6 +35,7 @@ export default function Home() {
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
       performSearch(query);
+      inputRef.current?.blur();
     }
   }
 
