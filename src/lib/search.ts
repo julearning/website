@@ -1,36 +1,73 @@
-import Fuse from "fuse.js";
 import type { Document, FilterState } from "./types";
-
-let fuseInstance: Fuse<Document> | null = null;
 
 export type SearchResult = {
   doc: Document;
   score: number;
 };
 
-function createFuseInstance(docs: Document[]) {
-  return new Fuse(docs, {
-    keys: [
-      { name: "title", weight: 8 },
-      { name: "subject", weight: 6 },
-      { name: "chapters", weight: 4 },
-      { name: "description", weight: 3 },
-      { name: "branch", weight: 2 },
-      { name: "tags", weight: 1 },
-    ],
-    threshold: 0.4,
-    distance: 100,
-    ignoreLocation: true,
-    includeScore: true,
-    minMatchCharLength: 1,
-  });
+function singleWordScore(doc: {
+  title: string;
+  subject: string;
+  description: string;
+  branch: string;
+  chapters: string[];
+  tags: string[];
+}, word: string): number {
+  const title = doc.title.toLowerCase();
+  const subject = doc.subject.toLowerCase();
+  const description = (doc.description || "").toLowerCase();
+  const branch = doc.branch.toLowerCase();
+  const chapters = doc.chapters.join(" ").toLowerCase();
+  const tags = doc.tags.join(" ").toLowerCase();
+
+  // Exact title match
+  if (title === word) return 0;
+  if (title.startsWith(word)) return 0.1;
+  if (title.includes(word)) return 0.2;
+
+  // Subject match
+  if (subject === word) return 0.15;
+  if (subject.startsWith(word)) return 0.2;
+  if (subject.includes(word)) return 0.3;
+
+  // Description / chapters match
+  if (description.includes(word)) return 0.35;
+  if (chapters.includes(word)) return 0.4;
+
+  // Branch match
+  if (branch.includes(word)) return 0.5;
+
+  // Tags match
+  if (tags.includes(word)) return 0.55;
+
+  // Word-level partial match in title
+  const titleWords = title.split(/\s+/);
+  for (const tw of titleWords) {
+    if (tw.startsWith(word) || word.startsWith(tw)) return 0.3;
+  }
+
+  // Word-level partial match in subject
+  const subjectWords = subject.split(/\s+/);
+  for (const sw of subjectWords) {
+    if (sw.startsWith(word) || word.startsWith(sw)) return 0.45;
+  }
+
+  return 1;
 }
 
-export function getSearchEngine(docs: Document[]) {
-  if (!fuseInstance) {
-    fuseInstance = createFuseInstance(docs);
+function queryScore(doc: Document, q: string): number {
+  const words = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return 1;
+
+  // Score each word separately, use the best (lowest) score across all words
+  let bestScore = 1;
+  for (const word of words) {
+    const score = singleWordScore(doc, word);
+    if (score < bestScore) bestScore = score;
+    // If any word is an exact title match, overall is 0
+    if (bestScore === 0) break;
   }
-  return fuseInstance;
+  return bestScore;
 }
 
 export function searchDocuments(
@@ -55,23 +92,15 @@ export function searchDocuments(
 
   // If no query, sort and return
   if (!query || query.trim().length === 0) {
-    return sortResults(filtered, sort);
+    return filtered.map((doc) => ({ doc, score: 0 }));
   }
 
-  // Use Fuse.js for fuzzy search
-  const fuse = getSearchEngine(docs);
-  const rawResults = fuse.search(query);
-
-  // Map results to documents (intersect with filtered)
+  // Score each document against the query
   const results: SearchResult[] = [];
-  const filteredIds = new Set(filtered.map((d) => d.id));
-
-  for (const result of rawResults) {
-    if (filteredIds.has(result.item.id)) {
-      results.push({
-        doc: result.item,
-        score: result.score ?? 1,
-      });
+  for (const doc of filtered) {
+    const score = queryScore(doc, query);
+    if (score < 1) {
+      results.push({ doc, score });
     }
   }
 
@@ -108,8 +137,4 @@ function sortDocumentsBy(docs: Document[], sort: FilterState["sort"]): Document[
       break;
   }
   return sorted;
-}
-
-function sortResults(docs: Document[], sort: FilterState["sort"]): SearchResult[] {
-  return sortDocumentsBy(docs, sort).map((doc) => ({ doc, score: 0 }));
 }
