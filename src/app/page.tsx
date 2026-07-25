@@ -9,6 +9,14 @@ import { getThumbnailUrl } from "@/lib/types";
 import { Navbar } from "@/components/Navbar";
 import { ResultCard } from "@/components/ResultCard";
 import { PaginatedGrid } from "@/components/PaginatedGrid";
+import { SortDropdown, type SortOption } from "@/components/SortDropdown";
+import { FilterDropdown } from "@/components/FilterDropdown";
+
+const CATEGORY_SECTIONS = [
+  { tag: "pyq", title: "Previous Year Questions", subtitle: "Past exam papers from all semesters" },
+  { tag: "handwritten", title: "Handwritten Notes", subtitle: "Student-scanned handwritten summaries" },
+  { tag: "typed", title: "Digital Notes", subtitle: "Clean typed notes and study materials" },
+] as const;
 
 export default function Home() {
   const [query, setQuery] = useState("");
@@ -16,10 +24,12 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [sort, setSort] = useState<SortOption>("relevance");
+  const [activeTags, setActiveTags] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function performSearch(q: string) {
+  async function performSearch(q: string, sortOverride?: SortOption, tagsOverride?: string[]) {
     if (!q.trim()) {
       setResults([]);
       setHasSearched(false);
@@ -31,9 +41,16 @@ export default function Home() {
     // Yield to React so the loading skeleton renders before results
     await new Promise((r) => setTimeout(r, 200));
 
+    const currentSort = sortOverride ?? sort;
+    const currentTags = tagsOverride ?? activeTags;
+
     const filters: FilterState = {
-      query: q, branch: null, semester: null, subject: null,
-      tags: [], sort: "relevance",
+      query: q,
+      branch: null,
+      semester: null,
+      subject: null,
+      tags: currentTags,
+      sort: currentSort,
     };
     const found = searchDocuments(documents, filters);
     setResults(found);
@@ -70,7 +87,6 @@ export default function Home() {
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
-      // Cancel any pending debounce and search immediately
       if (debounceRef.current) clearTimeout(debounceRef.current);
       performSearch(query);
       inputRef.current?.blur();
@@ -82,7 +98,23 @@ export default function Home() {
     setQuery("");
     setResults([]);
     setHasSearched(false);
+    setSort("relevance");
+    setActiveTags([]);
     inputRef.current?.focus();
+  }
+
+  function handleSortChange(newSort: SortOption) {
+    setSort(newSort);
+    if (hasSearched && query.trim()) {
+      performSearch(query, newSort);
+    }
+  }
+
+  function handleTagsChange(newTags: string[]) {
+    setActiveTags(newTags);
+    if (hasSearched && query.trim()) {
+      performSearch(query, undefined, newTags);
+    }
   }
 
   // Recent documents sorted by upload date (newest first)
@@ -90,6 +122,17 @@ export default function Home() {
     return [...documents]
       .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())
       .slice(0, 6);
+  }, []);
+
+  // Category sections: filter documents by tag, take 6 recent
+  const categoryDocs = useMemo(() => {
+    return CATEGORY_SECTIONS.map((cat) => ({
+      ...cat,
+      docs: [...documents]
+        .filter((d) => d.tags.includes(cat.tag))
+        .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())
+        .slice(0, 6),
+    }));
   }, []);
 
   const branches = getUniqueBranches();
@@ -106,7 +149,7 @@ export default function Home() {
     }
   }
 
-  function RecentCard({ doc }: { doc: Document }) {
+  function CategoryCard({ doc }: { doc: Document }) {
     const [imgFailed, setImgFailed] = useState(false);
     const thumb = getThumbnailUrl(doc.url);
     const showThumb = thumb && !imgFailed;
@@ -181,7 +224,7 @@ export default function Home() {
               />
               {isFocused && !query.trim() && (
                 <span className="mr-6 hidden text-xs text-muted-foreground/40 sm:inline">
-                  {results.length > 0 ? "Searching..." : "Press Enter or wait"}
+                  Press Enter or wait
                 </span>
               )}
               {query && (
@@ -199,12 +242,29 @@ export default function Home() {
         {/* Browse sections — shown when nothing is searched */}
         {!hasSearched && (
           <div className="space-y-20">
+            {/* Category Sections: PYQs, Handwritten, Digital Notes */}
+            {categoryDocs.map((cat) =>
+              cat.docs.length > 0 ? (
+                <section key={cat.tag}>
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-foreground">{cat.title}</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">{cat.subtitle}</p>
+                  </div>
+                  <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
+                    {cat.docs.map((doc) => (
+                      <CategoryCard key={doc.id} doc={doc} />
+                    ))}
+                  </div>
+                </section>
+              ) : null
+            )}
+
             {/* Recently Added */}
             <section>
               <h2 className="mb-6 text-lg font-semibold text-foreground">Recently Added</h2>
               <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
                 {recentDocs.map((doc) => (
-                  <RecentCard key={doc.id} doc={doc} />
+                  <CategoryCard key={doc.id} doc={doc} />
                 ))}
               </div>
             </section>
@@ -228,9 +288,7 @@ export default function Home() {
                       href={`/branches/${branch.toLowerCase()}`}
                       className="group bg-white p-7 transition-all duration-300 hover:bg-brand"
                     >
-                      <p className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
-                        {branch}
-                      </p>
+                      <p className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{branch}</p>
                       <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
                         {docCount} documents · {semesters.length} semesters
                       </p>
@@ -255,12 +313,8 @@ export default function Home() {
                       }}
                       className="group bg-white p-6 text-center transition-all duration-300 hover:bg-brand"
                     >
-                      <p className="text-2xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
-                        {sem}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
-                        {docCount} docs
-                      </p>
+                      <p className="text-2xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{sem}</p>
+                      <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} docs</p>
                     </button>
                   );
                 })}
@@ -282,12 +336,8 @@ export default function Home() {
                       }}
                       className="group bg-white p-6 text-left transition-all duration-300 hover:bg-brand"
                     >
-                      <p className="text-base font-medium text-foreground transition-colors duration-300 group-hover:text-white">
-                        {subject}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
-                        {docCount} documents
-                      </p>
+                      <p className="text-base font-medium text-foreground transition-colors duration-300 group-hover:text-white">{subject}</p>
+                      <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} documents</p>
                     </button>
                   );
                 })}
@@ -299,6 +349,20 @@ export default function Home() {
         {/* Search results */}
         {hasSearched && (
           <div className="mt-10">
+            {/* Results toolbar: count on left, sort+filter on right */}
+            {!isLoading && (
+              <div className="mb-6 flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {results.length} result{results.length !== 1 ? "s" : ""}
+                  {isFocused && query.trim() && <span className="ml-2 text-muted-foreground/40">· auto-searching in 3s</span>}
+                </p>
+                <div className="flex items-center gap-1">
+                  <SortDropdown value={sort} onChange={handleSortChange} />
+                  <FilterDropdown activeTags={activeTags} onChange={handleTagsChange} />
+                </div>
+              </div>
+            )}
+
             {isLoading ? (
               <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -312,18 +376,12 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-              <>
-                <p className="mb-6 text-sm text-muted-foreground">
-                  {results.length} result{results.length !== 1 ? "s" : ""}
-                  {isFocused && query.trim() && <span className="ml-2 text-muted-foreground/40">· auto-searching in 3s</span>}
-                </p>
-                <PaginatedGrid
-                  items={results}
-                  renderItem={(result) => <ResultCard key={result.doc.id} result={result} />}
-                  itemsPerPage={9}
-                  emptyMessage="No results found. Try a different search term."
-                />
-              </>
+              <PaginatedGrid
+                items={results}
+                renderItem={(result) => <ResultCard key={result.doc.id} result={result} />}
+                itemsPerPage={9}
+                emptyMessage="No results found. Try adjusting your filters or search term."
+              />
             )}
           </div>
         )}
