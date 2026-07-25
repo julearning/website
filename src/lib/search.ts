@@ -13,7 +13,7 @@ function createFuseInstance(docs: Document[]) {
     keys: [
       { name: "title", weight: 8 },
       { name: "subject", weight: 6 },
-      { name: "topic", weight: 5 },
+      { name: "chapters", weight: 4 },
       { name: "description", weight: 3 },
       { name: "branch", weight: 2 },
       { name: "tags", weight: 1 },
@@ -37,7 +37,7 @@ export function searchDocuments(
   docs: Document[],
   filters: FilterState,
 ): SearchResult[] {
-  const { query, branch, semester, subject, tags, fileType, sort } = filters;
+  const { query, branch, semester, subject, tags, sort } = filters;
 
   // Apply filters first
   let filtered = [...docs];
@@ -52,7 +52,6 @@ export function searchDocuments(
   if (tags.length > 0) {
     filtered = filtered.filter((d) => tags.every((t) => d.tags.includes(t)));
   }
-  if (fileType) filtered = filtered.filter((d) => d.fileType === fileType);
 
   // If no query, sort and return
   if (!query || query.trim().length === 0) {
@@ -94,10 +93,10 @@ function sortDocumentsBy(docs: Document[], sort: FilterState["sort"]): Document[
   const sorted = [...docs];
   switch (sort) {
     case "newest":
-      sorted.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+      sorted.sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime());
       break;
     case "oldest":
-      sorted.sort((a, b) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime());
+      sorted.sort((a, b) => new Date(a.uploadedAt || 0).getTime() - new Date(b.uploadedAt || 0).getTime());
       break;
     case "name":
       sorted.sort((a, b) => a.title.localeCompare(b.title));

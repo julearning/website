@@ -1,206 +1,198 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, ArrowRight, BookOpen, FileText } from "lucide-react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { Search, Download, FileText } from "lucide-react";
 import { documents } from "@/data/documents";
 import { searchDocuments, type SearchResult } from "@/lib/search";
 import type { FilterState } from "@/lib/types";
-import { SearchBar } from "@/components/search/search-bar";
-import { SearchResults } from "@/components/search/search-results";
-import { FilterBar } from "@/components/search/filter-bar";
+import { formatFileSize, getThumbnailUrl } from "@/lib/types";
 import { Navbar } from "@/components/Navbar";
 
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
-}
+const TAG_LABELS: Record<string, string> = {
+  notes: "Notes",
+  pyq: "PYQ",
+  assignment: "Assignment",
+  "lab-manual": "Lab Manual",
+  syllabus: "Syllabus",
+  handwritten: "Handwritten",
+  typed: "Typed",
+  "reference-book": "Ref Book",
+  "project-report": "Project",
+};
 
-const BRANCH_INFO: { id: string; name: string; icon: typeof BookOpen }[] = [
-  { id: "CSE", name: "Computer Science & Engineering", icon: BookOpen },
-  { id: "ECE", name: "Electronics & Communication", icon: BookOpen },
-  { id: "EE", name: "Electrical Engineering", icon: BookOpen },
-  { id: "ME", name: "Mechanical Engineering", icon: BookOpen },
-  { id: "CE", name: "Civil Engineering", icon: BookOpen },
-];
+function ResultCard({ result }: { result: SearchResult }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const thumbUrl = getThumbnailUrl(result.doc.url);
+  const showThumb = thumbUrl && !imgFailed;
 
-const branchDocCounts: Record<string, number> = {};
-for (const b of BRANCH_INFO) {
-  branchDocCounts[b.id] = documents.filter((d) => d.branch === b.id).length;
+  return (
+    <a
+      href={result.doc.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group block overflow-hidden rounded-xl border border-border bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-accent">
+        {showThumb ? (
+          <img
+            src={thumbUrl}
+            alt={result.doc.title}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <FileText className="h-12 w-12 text-muted-foreground/30" />
+          </div>
+        )}
+        <div className="absolute left-2 top-2 rounded-md bg-white/90 px-2 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-sm">
+          {result.doc.branch} S{result.doc.semester}
+        </div>
+        <div className="absolute right-2 top-2 flex flex-wrap gap-1">
+          {result.doc.tags.slice(0, 2).map((tag) => (
+            <span
+              key={tag}
+              className="rounded-md bg-white/90 px-2 py-1 text-[11px] font-medium shadow-sm backdrop-blur-sm"
+            >
+              {TAG_LABELS[tag] || tag}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="p-4">
+        <h3 className="text-sm font-semibold leading-snug text-foreground">
+          {result.doc.title}
+        </h3>
+        <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">
+          {result.doc.description || result.doc.subject}
+        </p>
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-[11px] text-muted-foreground">
+            {formatFileSize(result.doc.fileSize)}
+          </span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-brand transition-colors group-hover:text-brand/80">
+            <Download className="h-3 w-3" />
+            Download
+          </span>
+        </div>
+      </div>
+    </a>
+  );
 }
 
 export default function Home() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({
-    query: "", branch: null, semester: null, subject: null,
-    tags: [], fileType: null, sort: "relevance",
-  });
-
-  const heroRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const hero = heroRef.current;
-    const content = contentRef.current;
-    if (!hero || !content) return;
-
-    const ctx = gsap.context(() => {
-      gsap.from(content, { y: 40, opacity: 0, duration: 1, ease: "power3.out" });
-      gsap.to(".hero-bg", {
-        y: -40, scale: 1.03, ease: "none",
-        scrollTrigger: { trigger: hero, start: "top top", end: "bottom top", scrub: 1.5 },
-      });
-      gsap.to(content, {
-        y: 30, opacity: 0.3, ease: "none",
-        scrollTrigger: { trigger: hero, start: "top top", end: "bottom top", scrub: 1 },
-      });
-    }, hero);
-
-    return () => ctx.revert();
-  }, []);
-
-  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setHasSearched(false);
+      return;
+    }
+    setIsLoading(true);
+    setHasSearched(true);
     const timer = setTimeout(() => {
-      setIsLoading(true);
-      const sr = searchDocuments(documents, { ...filters, query });
-      setResults(sr);
+      const filters: FilterState = {
+        query, branch: null, semester: null, subject: null,
+        tags: [], sort: "relevance",
+      };
+      setResults(searchDocuments(documents, filters));
       setIsLoading(false);
-    }, 120);
+    }, 200);
     return () => clearTimeout(timer);
-  }, [query, filters]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        document.getElementById("hero-search")?.focus();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  const hasActiveFilters = !!(filters.branch || filters.semester || filters.subject || filters.tags.length > 0);
+  }, [query]);
 
   return (
     <>
-      {/* ─── Hero ─── */}
-      <div ref={heroRef} className="relative min-h-[85dvh] flex flex-col overflow-hidden">
-        {/* Background */}
-        <div className="hero-bg absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=1600&q=80"
-            alt=""
-            className="h-full w-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-background" />
-        </div>
+      <Navbar />
+      <main className="mx-auto max-w-5xl px-6 pb-16">
+        <div className="pt-16 sm:pt-24">
+          <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+            JU Learning
+          </h1>
+          <p className="mt-3 text-lg text-muted-foreground sm:text-xl">
+            Study materials, for everyone.
+          </p>
 
-        <div className="relative z-10">
-          <Navbar />
-        </div>
-
-        {/* Hero content — left-aligned */}
-        <div ref={contentRef} className="relative z-10 flex flex-1 flex-col justify-center px-6 pb-20 sm:px-12">
-          <div className="mx-auto w-full max-w-6xl">
-            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1 text-xs font-medium text-brand">
-              <FileText className="h-3 w-3" />
-              {documents.length} open source documents
-            </div>
-
-            <h1 className="font-heading max-w-3xl text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-7xl">
-              Study materials,
-              <br />
-              <span className="text-brand">for everyone.</span>
-            </h1>
-
-            <p className="mt-4 max-w-lg text-base leading-relaxed text-white/45 sm:text-lg">
-              Search notes, PYQs, lab manuals, and assignments across all B.Tech branches. Built by students, for students.
-            </p>
-
-            <div className="mt-8 w-full max-w-lg">
-              <SearchBar
+          <div className="relative mt-8 max-w-2xl">
+            <div className="flex items-center rounded-xl border border-border bg-white shadow-sm transition-shadow duration-200 hover:shadow-md focus-within:shadow-md focus-within:border-brand/50">
+              <Search className="ml-4 h-5 w-5 shrink-0 text-muted-foreground" />
+              <input
+                ref={inputRef}
+                type="text"
                 value={query}
-                onChange={setQuery}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                isFocused={isFocused}
-                variant="hero"
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search notes, subjects, topics..."
+                className="flex-1 border-0 bg-transparent px-3 py-4 text-base text-foreground placeholder-muted-foreground outline-none focus:outline-none sm:text-lg"
+                autoComplete="off"
+                spellCheck={false}
               />
-            </div>
-
-            <div className="mt-6 flex items-center gap-4 text-xs text-white/30">
-              <span className="text-white/20">Quick links:</span>
-              {BRANCH_INFO.filter((b) => branchDocCounts[b.id] > 0).map((b) => (
-                <a key={b.id} href={`/browse/${b.id.toLowerCase()}`} className="transition-colors hover:text-white/60">
-                  {b.id}
-                </a>
-              ))}
+              {query && (
+                <button
+                  onClick={() => { setQuery(""); inputRef.current?.focus(); }}
+                  className="mr-3 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <span className="text-lg leading-none">&times;</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ─── Results ─── */}
-      <div className="relative mx-auto max-w-4xl px-4 sm:px-6">
-        <AnimatePresence>
-          {(query || hasActiveFilters || isFocused) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-              className="pb-24"
-            >
-              <div className="mb-6 rounded-2xl bg-surface p-5">
-                <FilterBar filters={filters} onFilterChange={setFilters} />
+        {hasSearched && (
+          <div className="mt-10">
+            {isLoading ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="animate-pulse rounded-xl border border-border bg-white p-4">
+                    <div className="mb-3 h-40 rounded-lg bg-accent" />
+                    <div className="mb-2 h-4 w-3/4 rounded bg-accent" />
+                    <div className="h-3 w-1/2 rounded bg-accent" />
+                  </div>
+                ))}
               </div>
-              <SearchResults results={results} query={query} isLoading={isLoading} hasFilters={hasActiveFilters} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* ─── Browse teaser ─── */}
-      {!query && !hasActiveFilters && !isFocused && (
-        <div className="relative mx-auto max-w-6xl px-4 pb-32 sm:px-6">
-          <div className="mb-10">
-            <h2 className="font-heading text-2xl font-bold text-foreground sm:text-3xl">Browse by branch</h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">Pick your branch and start finding what you need.</p>
+            ) : results.length > 0 ? (
+              <>
+                <p className="mb-6 text-sm text-muted-foreground">
+                  {results.length} result{results.length !== 1 ? "s" : ""}
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {results.map((result) => (
+                    <ResultCard key={result.doc.id} result={result} />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center py-20 text-center">
+                <Search className="mb-4 h-10 w-10 text-muted-foreground/20" />
+                <p className="text-base text-muted-foreground">No results found</p>
+                <p className="mt-1 text-sm text-muted-foreground/50">
+                  Try a different search term.
+                </p>
+              </div>
+            )}
           </div>
+        )}
 
-          <div className="grid gap-3 sm:grid-cols-5">
-            {BRANCH_INFO.filter((b) => branchDocCounts[b.id] > 0).map((branch, i) => (
-              <motion.a
-                key={branch.id}
-                href={`/browse/${branch.id.toLowerCase()}`}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.06 * i, duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
-                className="group rounded-2xl bg-surface p-6 text-center transition-all hover:bg-surface-elevated"
-              >
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-subtle transition-colors group-hover:bg-brand/20">
-                  <BookOpen className="h-5 w-5 text-brand" />
-                </div>
-                <div className="font-heading text-lg font-bold text-foreground transition-colors group-hover:text-brand">
-                  {branch.id}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {branchDocCounts[branch.id]} {branchDocCounts[branch.id] === 1 ? "doc" : "docs"}
-                </div>
-              </motion.a>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground/40">
-        JU Learning — Open source study materials.
-      </footer>
+        <footer className="mt-20 py-8 text-center">
+          <p className="text-xs text-muted-foreground/50">
+            Open source study materials.{" "}
+            <a
+              href="https://github.com/julearning/metadata"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline transition-colors hover:text-muted-foreground"
+            >
+              Contribute on GitHub
+            </a>
+          </p>
+        </footer>
+      </main>
     </>
   );
 }

@@ -10,17 +10,14 @@ const geist = Geist({
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-heading",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["500", "600", "700", "800"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "JU Learning — Study Materials",
-    template: "%s — JU Learning",
-  },
+  title: "JU Learning",
   description:
-    "Open source study materials for B.Tech students. Search notes, PYQs, lab manuals, and assignments across all branches.",
+    "Open source study materials for B.Tech students. Search notes, PYQs, and more across all branches.",
   metadataBase: new URL("https://julearning.vercel.app"),
 };
 
@@ -31,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geist.variable} ${plusJakartaSans.variable}`}>
-      <body className="grain min-h-screen bg-background text-foreground antialiased">
+      <body className="min-h-screen bg-background text-foreground antialiased">
         {children}
       </body>
     </html>

@@ -1,11 +1,9 @@
 /**
  * Build-time data generator.
  *
- * Clones julearning/metadata from GitHub, reads all JSON files,
- * and generates src/data/generated-documents.ts with embedded document data.
- *
- * Runs via prebuild / predev in package.json.
- * No external arguments needed — it clones the repo itself.
+ * Clones julearning/metadata from GitHub, reads all subject-level JSON files,
+ * flattens sections into individual Document entries, and generates
+ * src/data/generated-documents.ts.
  */
 
 import { execSync } from "child_process";
@@ -33,9 +31,32 @@ function cloneMetadata() {
   }
 }
 
+function getFileIdFromUrl(url) {
+  const match = url.match(/\/file\/d\/([^/]+)\//);
+  return match ? match[1] : null;
+}
+
+function getThumbnailUrl(url) {
+  const fileId = getFileIdFromUrl(url);
+  if (!fileId) return "";
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+}
+
+function inferFileType(url) {
+  if (url.includes("document/d/") || url.endsWith(".docx")) return "docx";
+  return "pdf";
+}
+
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .replace(/--+/g, "-");
+}
+
 function scanDir(dir) {
-  const docs = [];
-  if (!fs.existsSync(dir)) return docs;
+  const subjectFiles = [];
 
   function scan(currentDir) {
     const entries = fs.readdirSync(currentDir, { withFileTypes: true });
@@ -44,22 +65,80 @@ function scanDir(dir) {
       if (entry.isDirectory()) {
         scan(fullPath);
       } else if (entry.name.endsWith(".json") && !entry.name.startsWith(".")) {
-        try {
-          const raw = fs.readFileSync(fullPath, "utf-8");
-          const doc = JSON.parse(raw);
-          if (doc.id && doc.title && doc.url) {
-            docs.push(doc);
-          } else {
-            console.warn("Skipping " + fullPath + ": missing required fields");
-          }
-        } catch (e) {
-          console.warn("Skipping " + fullPath + ": " + e.message);
-        }
+        subjectFiles.push(fullPath);
       }
     }
   }
 
   scan(dir);
+  return subjectFiles;
+}
+
+function flattenDocuments(subjectFiles) {
+  const docs = [];
+  let idCounter = 1;
+
+  for (const filePath of subjectFiles) {
+    try {
+      const raw = fs.readFileSync(filePath, "utf-8");
+      const subjectData = JSON.parse(raw);
+
+      if (!subjectData.subject || !subjectData.branch || !subjectData.semester) {
+        console.warn("Skipping " + filePath + ": missing required fields");
+        continue;
+      }
+
+      const branch = subjectData.branch;
+      const semester = subjectData.semester;
+      const subject = subjectData.subject;
+      const sections = subjectData.sections || {};
+
+      const allChapters = [];
+      for (const [sectionKey, sectionData] of Object.entries(sections)) {
+        if (sectionData && sectionData.chapters) {
+          allChapters.push(...sectionData.chapters);
+        }
+        if (sectionData && sectionData.documents) {
+          for (const doc of sectionData.documents) {
+            if (!doc.title || !doc.url) {
+              console.warn("Skipping doc in " + filePath + ": missing title or url");
+              continue;
+            }
+
+            const id = `doc-${String(idCounter).padStart(4, "0")}`;
+            idCounter++;
+
+            const fileType = doc.fileType || inferFileType(doc.url);
+            const chapters = sections[sectionKey]?.chapters || [];
+
+            docs.push({
+              id,
+              title: doc.title,
+              description: doc.description || `${subject} — ${sectionKey.replace("section-", "Section ").toUpperCase()}`,
+              url: doc.url,
+              thumbnailUrl: getThumbnailUrl(doc.url),
+              fileType,
+              fileSize: doc.fileSize || 0,
+              branch,
+              semester,
+              subject,
+              section: sectionKey,
+              tags: doc.tags || [],
+              chapters,
+              contributor: doc.contributor || "",
+              uploadedAt: doc.uploadedAt || new Date().toISOString(),
+              language: doc.language || "English",
+              pages: doc.pages,
+              downloads: doc.downloads,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Error reading " + filePath + ": " + e.message);
+    }
+  }
+
   return docs;
 }
 
@@ -100,19 +179,21 @@ function cleanup() {
   console.log("Temp metadata cleaned up.");
 }
 
-// ─── Main ────────────────────────────────────────────────────────────
-
 try {
   cloneMetadata();
 
   console.log("Scanning for metadata files...");
-  const docs = scanDir(CLONE_DIR);
+  const subjectFiles = scanDir(CLONE_DIR);
+  console.log(`Found ${subjectFiles.length} subject-level JSON files`);
+
+  const docs = flattenDocuments(subjectFiles);
+  console.log(`Flattened into ${docs.length} documents`);
 
   const content = generateFile(docs);
   fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
   fs.writeFileSync(OUTPUT_FILE, content, "utf-8");
 
-  console.log("Generated " + OUTPUT_FILE + " with " + docs.length + " documents");
+  console.log("Generated " + OUTPUT_FILE);
 } finally {
   cleanup();
 }
