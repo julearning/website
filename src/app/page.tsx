@@ -64,7 +64,7 @@ export default function Home() {
   return (
     <>
       <Navbar />
-      <main className="mx-auto max-w-5xl px-6 pb-16">
+      <main className="mx-auto max-w-6xl px-6 pb-16">
         <div className="pt-16 sm:pt-24">
           <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl">
             JU Learning
@@ -74,7 +74,7 @@ export default function Home() {
           </p>
 
           <div className="relative mt-8 max-w-2xl">
-            <div className="flex items-center rounded-xl border border-border bg-white shadow-sm transition-shadow duration-200 hover:shadow-md focus-within:shadow-md focus-within:border-brand/50">
+            <div className="flex items-center rounded-2xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-shadow duration-200 focus-within:shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
               <Search className="ml-4 h-5 w-5 shrink-0 text-muted-foreground" />
               <input
                 ref={inputRef}

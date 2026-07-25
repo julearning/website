@@ -34,8 +34,8 @@ export function Navbar() {
       : "text-muted-foreground hover:text-foreground";
 
   return (
-    <header className="py-6">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6">
+    <header className="py-5">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6">
         <Link
           href="/"
           className="text-xl font-semibold tracking-tight text-foreground transition-opacity hover:opacity-70"
@@ -81,7 +81,7 @@ export function Navbar() {
       {/* Mobile menu dropdown */}
       {menuOpen && (
         <div className="mx-auto mt-4 max-w-5xl px-6 sm:hidden">
-          <div className="rounded-xl border border-border bg-white p-3 shadow-lg">
+          <div className="rounded-2xl bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
             <nav className="flex flex-col gap-1">
               {NAV_LINKS.map((link) => (
                 <Link

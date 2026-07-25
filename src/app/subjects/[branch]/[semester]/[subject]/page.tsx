@@ -53,7 +53,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ branch
   if (subjectDocs.length === 0) notFound();
 
   return (
-    <div className="mx-auto max-w-5xl px-6 pb-16">
+    <div className="mx-auto max-w-6xl px-6 pb-16">
       <div className="pt-12 sm:pt-16">
         <Breadcrumbs items={[
           { label: "Home", href: "/" },

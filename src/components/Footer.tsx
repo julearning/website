@@ -7,8 +7,8 @@ export function Footer() {
   const semesters = [...new Set(documents.map((d) => d.semester))].length;
 
   return (
-    <footer className="border-t border-border/30 bg-accent/30">
-      <div className="mx-auto max-w-5xl px-6 py-12">
+    <footer className="bg-accent/20">
+      <div className="mx-auto max-w-6xl px-6 py-12">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4">
           {/* Brand */}
           <div className="sm:col-span-2 md:col-span-1">
@@ -133,7 +133,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-border/30 pt-6 text-center text-xs text-muted-foreground/50">
+        <div className="mt-10 pt-6 text-center text-xs text-muted-foreground/50">
           <p>
             Open source study materials for everyone. Built with Next.js.{" "}
             <a

@@ -56,7 +56,7 @@ export function DocumentBrowser({ docs, subject }: Props) {
   return (
     <>
       <div className="mb-6 max-w-md">
-        <div className="flex items-center rounded-xl border border-border bg-white px-4 shadow-sm transition-shadow duration-200 focus-within:shadow-md focus-within:border-brand/50">
+        <div className="flex items-center rounded-2xl bg-white px-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-shadow duration-200 focus-within:shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
             type="text"

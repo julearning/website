@@ -44,7 +44,7 @@ export default async function BranchPage({ params }: { params: Promise<{ branch:
   const semesters = [...new Set(docs.map((d) => d.semester))].sort((a, b) => a - b);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 pb-16">
+    <div className="mx-auto max-w-6xl px-6 pb-16">
       <div className="pt-12 sm:pt-16">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Branches", href: "/branches" }, { label: branch }]} />
         <div className="mb-6 flex items-center gap-4">
@@ -67,7 +67,7 @@ export default async function BranchPage({ params }: { params: Promise<{ branch:
             <Link
               key={sem}
               href={`/semesters/${branchSlug}/${sem}`}
-              className="group rounded-xl border border-border bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+              className="group rounded-2xl bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
             >
               <h2 className="text-xl font-semibold text-foreground">Semester {sem}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{subjects.length} subject{subjects.length !== 1 ? "s" : ""} · {semesterDocs.length} document{semesterDocs.length !== 1 ? "s" : ""}</p>

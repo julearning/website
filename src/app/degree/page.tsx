@@ -25,7 +25,7 @@ export default function DegreePage() {
   const allSubjects = [...new Set(documents.map((d) => d.subject))].sort();
 
   return (
-    <div className="mx-auto max-w-5xl px-6 pb-16">
+    <div className="mx-auto max-w-6xl px-6 pb-16">
       <div className="pt-12 sm:pt-16">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "B.Tech" }]} />
 
@@ -49,7 +49,7 @@ export default function DegreePage() {
             <Link
               key={branch}
               href={`/branches/${branch.toLowerCase()}`}
-              className="group rounded-xl border border-border bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+              className="group rounded-2xl bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
             >
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent transition-colors group-hover:bg-brand/10">
                 <Icon className="h-6 w-6 text-muted-foreground transition-colors group-hover:text-brand" />
