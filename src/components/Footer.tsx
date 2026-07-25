@@ -1,13 +1,8 @@
 import Link from "next/link";
-import { documents, getUniqueBranches } from "@/data/documents";
 
 export function Footer() {
-  const docCount = documents.length;
-  const branchCount = getUniqueBranches().length;
-  const semesters = [...new Set(documents.map((d) => d.semester))].length;
-
   return (
-    <footer className="bg-accent/20">
+    <footer>
       <div className="mx-auto max-w-6xl px-6 py-12">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4">
           {/* Brand */}
@@ -22,17 +17,6 @@ export function Footer() {
               Open source study materials for B.Tech students. Free access to
               notes, PYQs, and more.
             </p>
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              <span className="rounded-md bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {docCount} documents
-              </span>
-              <span className="rounded-md bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {branchCount} branches
-              </span>
-              <span className="rounded-md bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {semesters} semesters
-              </span>
-            </div>
           </div>
 
           {/* Navigation */}
@@ -131,20 +115,6 @@ export function Footer() {
               </li>
             </ul>
           </div>
-        </div>
-
-        <div className="mt-10 pt-6 text-center text-xs text-muted-foreground/50">
-          <p>
-            Open source study materials for everyone. Built with Next.js.{" "}
-            <a
-              href="https://github.com/julearning/website"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline transition-colors hover:text-muted-foreground"
-            >
-              View source
-            </a>
-          </p>
         </div>
       </div>
     </footer>

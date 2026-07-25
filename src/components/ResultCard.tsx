@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileText } from "lucide-react";
 import type { SearchResult } from "@/lib/search";
 import { formatFileSize, getThumbnailUrl } from "@/lib/types";
 
@@ -30,21 +29,26 @@ export function ResultCard({ result }: { result: SearchResult }) {
       href={doc.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block break-inside-avoid overflow-hidden rounded-2xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 mb-5"
+      className="group block break-inside-avoid overflow-hidden rounded-2xl bg-white transition-all duration-300 hover:bg-brand hover:border-2 hover:border-foreground mb-5"
     >
       {/* Thumbnail */}
       <div className="relative overflow-hidden bg-accent">
         {showThumb ? (
-          <img
-            src={thumbUrl}
-            alt={doc.title}
-            className="w-full transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-            onError={() => setImgFailed(true)}
-          />
+          <>
+            <img
+              src={thumbUrl}
+              alt={doc.title}
+              className="w-full transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+              onError={() => setImgFailed(true)}
+            />
+            <div className="absolute inset-0 bg-transparent transition-colors duration-300 group-hover:bg-brand/10" />
+          </>
         ) : (
-          <div className="flex h-56 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50">
-            <FileText className="h-16 w-16 text-muted-foreground/20" />
+          <div className="flex h-56 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand/80 group-hover:to-brand/60">
+            <span className="text-4xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
+              {doc.title.charAt(0).toUpperCase()}
+            </span>
           </div>
         )}
         {/* Type badge */}
@@ -53,7 +57,7 @@ export function ResultCard({ result }: { result: SearchResult }) {
             {displayTags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-lg bg-white/95 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-sm"
+                className="rounded-lg bg-white/95 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white group-hover:shadow-none"
               >
                 {TAG_LABELS[tag] || tag}
               </span>
@@ -63,23 +67,24 @@ export function ResultCard({ result }: { result: SearchResult }) {
       </div>
 
       {/* Info */}
-      <div className="p-4">
-        <h3 className="text-sm font-semibold leading-snug text-foreground">
+      <div className="p-4 transition-colors duration-300">
+        <h3 className="text-sm font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-white">
           {doc.title}
         </h3>
 
         {/* Taxonomy row: subject · branch S{sem} */}
-        <p className="mt-2 text-xs text-muted-foreground/70">
+        <p className="mt-2 text-xs text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70">
           {doc.subject}
-          <span className="mx-1.5 text-muted-foreground/30">·</span>
+          <span className="mx-1.5 text-muted-foreground/30 transition-colors duration-300 group-hover:text-white/30">·</span>
           {doc.branch} S{doc.semester}
         </p>
 
         {/* File size + download */}
         <div className="mt-3 flex items-center justify-between">
-          <span className="text-[11px] text-muted-foreground/50">{formatFileSize(doc.fileSize)}</span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground/60 transition-colors group-hover:text-brand">
-            <Download className="h-3 w-3" />
+          <span className="text-[11px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/50">
+            {formatFileSize(doc.fileSize)}
+          </span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground/60 transition-colors duration-300 group-hover:text-white/80">
             Download
           </span>
         </div>

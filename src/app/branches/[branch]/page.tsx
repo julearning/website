@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Monitor, Radio, Zap, Cog, HardHat, BookOpen } from "lucide-react";
 import { getDocumentsByBranch } from "@/data/documents";
 import type { Branch } from "@/lib/types";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -10,12 +9,12 @@ const BRANCH_MAP: Record<string, Branch> = {
   cse: "CSE", ece: "ECE", ee: "EE", me: "ME", ce: "CE",
 };
 
-const BRANCH_INFO: Record<Branch, { name: string; icon: typeof BookOpen }> = {
-  CSE: { name: "Computer Science & Engineering", icon: Monitor },
-  ECE: { name: "Electronics & Communication Engineering", icon: Radio },
-  EE: { name: "Electrical Engineering", icon: Zap },
-  ME: { name: "Mechanical Engineering", icon: Cog },
-  CE: { name: "Civil Engineering", icon: HardHat },
+const BRANCH_NAMES: Record<Branch, string> = {
+  CSE: "Computer Science & Engineering",
+  ECE: "Electronics & Communication Engineering",
+  EE: "Electrical Engineering",
+  ME: "Mechanical Engineering",
+  CE: "Civil Engineering",
 };
 
 export function generateStaticParams() {
@@ -28,8 +27,8 @@ export async function generateMetadata({ params }: { params: Promise<{ branch: s
   if (!branch) return { title: "Not Found" };
   const count = getDocumentsByBranch(branch).length;
   return {
-    title: `${BRANCH_INFO[branch]?.name || branch} — JU Learning`,
-    description: `Browse ${count} study materials for ${BRANCH_INFO[branch]?.name || branch}. Notes, PYQs, and more across all semesters.`,
+    title: `${BRANCH_NAMES[branch] || branch} — JU Learning`,
+    description: `Browse ${count} study materials for ${BRANCH_NAMES[branch] || branch}. Notes, PYQs, and more across all semesters.`,
   };
 }
 
@@ -38,8 +37,7 @@ export default async function BranchPage({ params }: { params: Promise<{ branch:
   const branch = BRANCH_MAP[branchSlug];
   if (!branch) notFound();
 
-  const info = BRANCH_INFO[branch];
-  const Icon = info?.icon || BookOpen;
+  const name = BRANCH_NAMES[branch] || branch;
   const docs = getDocumentsByBranch(branch);
   const semesters = [...new Set(docs.map((d) => d.semester))].sort((a, b) => a - b);
 
@@ -47,14 +45,9 @@ export default async function BranchPage({ params }: { params: Promise<{ branch:
     <div className="mx-auto max-w-6xl px-6 pb-16">
       <div className="pt-12 sm:pt-16">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Branches", href: "/branches" }, { label: branch }]} />
-        <div className="mb-6 flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent">
-            <Icon className="h-7 w-7 text-foreground" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{info?.name || branch}</h1>
-            <p className="mt-1 text-base text-muted-foreground">{docs.length} document{docs.length !== 1 ? "s" : ""} across {semesters.length} semester{semesters.length !== 1 ? "s" : ""}</p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{name}</h1>
+          <p className="mt-1 text-base text-muted-foreground">{docs.length} document{docs.length !== 1 ? "s" : ""} across {semesters.length} semester{semesters.length !== 1 ? "s" : ""}</p>
         </div>
       </div>
 
@@ -67,16 +60,22 @@ export default async function BranchPage({ params }: { params: Promise<{ branch:
             <Link
               key={sem}
               href={`/semesters/${branchSlug}/${sem}`}
-              className="group rounded-2xl bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
+              className="group rounded-2xl bg-white p-6 transition-all duration-300 hover:bg-brand hover:border-2 hover:border-foreground"
             >
-              <h2 className="text-xl font-semibold text-foreground">Semester {sem}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{subjects.length} subject{subjects.length !== 1 ? "s" : ""} · {semesterDocs.length} document{semesterDocs.length !== 1 ? "s" : ""}</p>
+              <h2 className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">Semester {sem}</h2>
+              <p className="mt-1 text-sm text-muted-foreground transition-colors duration-300 group-hover:text-white/70">
+                {subjects.length} subject{subjects.length !== 1 ? "s" : ""} · {semesterDocs.length} document{semesterDocs.length !== 1 ? "s" : ""}
+              </p>
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {subjects.slice(0, 6).map((subject) => (
-                  <span key={subject} className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{subject}</span>
+                  <span key={subject} className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
+                    {subject}
+                  </span>
                 ))}
                 {subjects.length > 6 && (
-                  <span className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground">+{subjects.length - 6}</span>
+                  <span className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
+                    +{subjects.length - 6}
+                  </span>
                 )}
               </div>
             </Link>

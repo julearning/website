@@ -59,7 +59,7 @@ export function PaginatedGrid<T>({
           </p>
           <button
             onClick={() => setPage((p) => p + 1)}
-            className="inline-flex items-center gap-2 rounded-2xl bg-foreground px-8 py-3.5 text-sm font-medium text-background shadow-sm transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 rounded-2xl bg-foreground px-8 py-3.5 text-sm font-medium text-background transition-all duration-200 hover:opacity-90"
           >
             Show {remaining > itemsPerPage ? itemsPerPage : remaining} more
           </button>
