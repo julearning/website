@@ -125,7 +125,7 @@ export default function Home() {
                   <Link
                     key={branch}
                     href={`/branches/${branch.toLowerCase()}`}
-                    className="group rounded-xl border border-border bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                    className="group rounded-2xl bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-0.5"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent transition-colors group-hover:bg-brand/10">
@@ -157,12 +157,14 @@ export default function Home() {
         {hasSearched && (
           <div className="mt-10">
             {isLoading ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-xl border border-border bg-white p-4">
-                    <div className="mb-3 h-40 rounded-lg bg-accent" />
-                    <div className="mb-2 h-4 w-3/4 rounded bg-accent" />
-                    <div className="h-3 w-1/2 rounded bg-accent" />
+                  <div key={i} className="mb-5 animate-pulse break-inside-avoid overflow-hidden rounded-2xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                    <div className="h-56 bg-accent" />
+                    <div className="p-4">
+                      <div className="mb-2 h-4 w-3/4 rounded bg-accent/50" />
+                      <div className="h-3 w-1/2 rounded bg-accent/30" />
+                    </div>
                   </div>
                 ))}
               </div>
