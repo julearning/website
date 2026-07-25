@@ -25,7 +25,7 @@ export default function Home() {
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function performSearch(q: string) {
+  async function performSearch(q: string) {
     if (!q.trim()) {
       setResults([]);
       setHasSearched(false);
@@ -33,11 +33,16 @@ export default function Home() {
     }
     setIsLoading(true);
     setHasSearched(true);
+
+    // Yield to React so the loading skeleton renders before results
+    await new Promise((r) => setTimeout(r, 200));
+
     const filters: FilterState = {
       query: q, branch: null, semester: null, subject: null,
       tags: [], sort: "relevance",
     };
-    setResults(searchDocuments(documents, filters));
+    const found = searchDocuments(documents, filters);
+    setResults(found);
     setIsLoading(false);
   }
 
