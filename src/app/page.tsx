@@ -154,8 +154,8 @@ export default function Home() {
     <>
       <Navbar />
       <main className="mx-auto max-w-6xl px-6 pb-16">
-        {/* Hero — full-screen, centered */}
-        <div className="flex min-h-screen flex-col items-center justify-center text-center">
+        {/* Hero — truly centered in remaining viewport space after navbar */}
+        <div className="flex min-h-[calc(100dvh-60px)] flex-col items-center justify-center text-center">
           <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-7xl lg:text-8xl">
             JU Learning
           </h1>
