@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = {
   title: "Terms of Service — JU Learning",
@@ -10,11 +10,7 @@ export default function TermsPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 pb-16">
       <div className="pt-12 sm:pt-16">
-        <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/" className="transition-colors hover:text-foreground">Home</Link>
-          <span>/</span>
-          <span className="text-foreground">Terms of Service</span>
-        </div>
+        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Terms of Service" }]} />
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Terms of Service</h1>
       </div>
 

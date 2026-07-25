@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { documents } from "@/data/documents";
 import type { Branch } from "@/lib/types";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DocumentBrowser } from "./DocumentBrowser";
 
 const BRANCH_MAP: Record<string, Branch> = {
@@ -54,17 +55,13 @@ export default async function SubjectPage({ params }: { params: Promise<{ branch
   return (
     <div className="mx-auto max-w-5xl px-6 pb-16">
       <div className="pt-12 sm:pt-16">
-        <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/" className="transition-colors hover:text-foreground">Home</Link>
-          <span>/</span>
-          <Link href="/branches" className="transition-colors hover:text-foreground">Branches</Link>
-          <span>/</span>
-          <Link href={`/branches/${branchSlug}`} className="transition-colors hover:text-foreground">{branch}</Link>
-          <span>/</span>
-          <Link href={`/semesters/${branchSlug}/${semester}`} className="transition-colors hover:text-foreground">Semester {semester}</Link>
-          <span>/</span>
-          <span className="text-foreground">{subject}</span>
-        </div>
+        <Breadcrumbs items={[
+          { label: "Home", href: "/" },
+          { label: "Branches", href: "/branches" },
+          { label: branch, href: `/branches/${branchSlug}` },
+          { label: `Semester ${semester}`, href: `/semesters/${branchSlug}/${semester}` },
+          { label: subject },
+        ]} />
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{subject}</h1>
           <p className="mt-1 text-base text-muted-foreground">{BRANCH_NAMES[branch]} — Semester {semester} · {subjectDocs.length} document{subjectDocs.length !== 1 ? "s" : ""}</p>

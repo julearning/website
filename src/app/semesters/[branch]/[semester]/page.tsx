@@ -5,6 +5,7 @@ import { BookOpen, FileText, Monitor, Radio, Zap, Cog, HardHat } from "lucide-re
 import { documents, getDocumentsByBranch } from "@/data/documents";
 import type { Branch } from "@/lib/types";
 import { formatFileSize } from "@/lib/types";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 const BRANCH_MAP: Record<string, Branch> = {
   cse: "CSE", ece: "ECE", ee: "EE", me: "ME", ce: "CE",
@@ -56,15 +57,12 @@ export default async function SemesterPage({ params }: { params: Promise<{ branc
   return (
     <div className="mx-auto max-w-5xl px-6 pb-16">
       <div className="pt-12 sm:pt-16">
-        <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/" className="transition-colors hover:text-foreground">Home</Link>
-          <span>/</span>
-          <Link href="/branches" className="transition-colors hover:text-foreground">Branches</Link>
-          <span>/</span>
-          <Link href={`/branches/${branchSlug}`} className="transition-colors hover:text-foreground">{branch}</Link>
-          <span>/</span>
-          <span className="text-foreground">Semester {semester}</span>
-        </div>
+        <Breadcrumbs items={[
+          { label: "Home", href: "/" },
+          { label: "Branches", href: "/branches" },
+          { label: branch, href: `/branches/${branchSlug}` },
+          { label: `Semester ${semester}` },
+        ]} />
         <div className="mb-6 flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent"><Icon className="h-7 w-7 text-foreground" /></div>
           <div>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BookOpen, Monitor, Radio, Zap, Cog, HardHat } from "lucide-react";
 import { getUniqueBranches, getDocumentsByBranch, documents } from "@/data/documents";
 import type { Branch } from "@/lib/types";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = {
   title: "B.Tech Degree — JU Learning",
@@ -26,11 +27,7 @@ export default function DegreePage() {
   return (
     <div className="mx-auto max-w-5xl px-6 pb-16">
       <div className="pt-12 sm:pt-16">
-        <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/" className="transition-colors hover:text-foreground">Home</Link>
-          <span>/</span>
-          <span className="text-foreground">B.Tech</span>
-        </div>
+        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "B.Tech" }]} />
 
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           Bachelor of Technology (B.Tech)

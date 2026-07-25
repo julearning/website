@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BookOpen, Monitor, Zap, Cog, HardHat, Radio } from "lucide-react";
 import { getUniqueBranches, getDocumentsByBranch } from "@/data/documents";
 import type { Branch } from "@/lib/types";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = {
   title: "Branches — JU Learning",
@@ -23,11 +24,7 @@ export default function BranchesPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 pb-16">
       <div className="pt-12 sm:pt-16">
-        <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/" className="transition-colors hover:text-foreground">Home</Link>
-          <span>/</span>
-          <span className="text-foreground">Branches</span>
-        </div>
+        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Branches" }]} />
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Engineering Branches</h1>
         <p className="mt-2 text-base text-muted-foreground">Select your branch to browse study materials by semester and subject.</p>
       </div>
