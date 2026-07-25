@@ -74,6 +74,19 @@ function RelatedCard({ doc }: { doc: JLDoc }) {
           <span className="mx-1.5 text-muted-foreground/30 transition-colors duration-300 group-hover:text-white/30">·</span>
           {formatFileSize(doc.fileSize)}
         </p>
+
+        {/* Contributor */}
+        {doc.contributor && (
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/60">
+            <img
+              src={`https://github.com/${doc.contributor}.png?size=20`}
+              alt={doc.contributor}
+              className="h-4 w-4"
+              loading="lazy"
+            />
+            {doc.contributor}
+          </p>
+        )}
       </div>
     </a>
   );

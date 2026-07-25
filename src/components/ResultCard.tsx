@@ -100,6 +100,27 @@ export function ResultCard({ result }: { result: SearchResult }) {
             {doc.branch} S{doc.semester}
           </p>
 
+          {/* Contributor */}
+          {doc.contributor && (
+            <a
+              href={`https://github.com/${doc.contributor}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="mt-2 inline-flex items-center gap-1.5 transition-colors duration-300 hover:opacity-80"
+            >
+              <img
+                src={`https://github.com/${doc.contributor}.png?size=20`}
+                alt={doc.contributor}
+                className="h-4 w-4"
+                loading="lazy"
+              />
+              <span className="text-[11px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/60">
+                {doc.contributor}
+              </span>
+            </a>
+          )}
+
           {/* File size + download */}
           <div className="mt-3 flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/50">
