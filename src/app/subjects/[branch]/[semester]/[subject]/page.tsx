@@ -5,6 +5,7 @@ import { documents } from "@/data/documents";
 import type { Branch } from "@/lib/types";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DocumentBrowser } from "./DocumentBrowser";
+import { RelatedDocuments } from "@/components/RelatedDocuments";
 
 const BRANCH_MAP: Record<string, Branch> = {
   cse: "CSE", ece: "ECE", ee: "EE", me: "ME", ce: "CE",
@@ -52,6 +53,16 @@ export default async function SubjectPage({ params }: { params: Promise<{ branch
   const subjectDocs = documents.filter((d) => d.branch === branch && d.semester === semester && d.subject === subject);
   if (subjectDocs.length === 0) notFound();
 
+  // Related documents: same subject, different branch/semester, sorted newest first, max 6
+  const relatedDocIds = new Set(subjectDocs.map((d) => d.id));
+  const relatedDocs = documents
+    .filter((d) => d.subject === subject && !relatedDocIds.has(d.id))
+    .sort((a, b) => {
+      if (a.uploadedAt && b.uploadedAt) return b.uploadedAt.localeCompare(a.uploadedAt);
+      return 0;
+    })
+    .slice(0, 6);
+
   return (
     <div className="mx-auto max-w-6xl px-6 pb-16">
       <div className="pt-12 sm:pt-16">
@@ -68,6 +79,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ branch
         </div>
       </div>
       <DocumentBrowser docs={subjectDocs} subject={subject} />
+      <RelatedDocuments docs={relatedDocs} />
     </div>
   );
 }
