@@ -72,6 +72,28 @@ export default function Home() {
     }, 3000);
   };
 
+  // Search autocomplete: match titles/subjects that start with the typed query
+  const suggestion = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q || q.length < 1) return "";
+
+    // Try to match a document title first
+    for (const doc of documents) {
+      const lower = doc.title.toLowerCase();
+      if (lower.startsWith(q) && lower.length > q.length) {
+        return doc.title.slice(query.trim().length);
+      }
+    }
+    // Then try subjects
+    for (const doc of documents) {
+      const lower = doc.subject.toLowerCase();
+      if (lower.startsWith(q) && lower.length > q.length) {
+        return doc.subject.slice(query.trim().length);
+      }
+    }
+    return "";
+  }, [query]);
+
   // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
@@ -86,6 +108,12 @@ export default function Home() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Tab" && suggestion) {
+      // Fill in the suggestion on Tab
+      e.preventDefault();
+      setQuery(query.trim() + suggestion);
+      return;
+    }
     if (e.key === "Enter") {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       performSearch(query);
@@ -135,6 +163,19 @@ export default function Home() {
     }));
   }, []);
 
+  // Contributor leaderboard: count documents per contributor, take top 8
+  const topContributors = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const doc of documents) {
+      const c = doc.contributor || "unknown";
+      counts[c] = (counts[c] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 8)
+      .map(([username, count]) => ({ username, count }));
+  }, []);
+
   const branches = getUniqueBranches();
   const allSemesters = [...new Set(documents.map((d) => d.semester))].sort((a, b) => a - b);
   const allSubjects = [...new Set(documents.map((d) => d.subject))].sort();
@@ -147,6 +188,41 @@ export default function Home() {
     } catch {
       return "";
     }
+  }
+
+  function ContributorCard({ username, count }: { username: string; count: number }) {
+    const [imgFailed, setImgFailed] = useState(false);
+
+    return (
+      <a
+        href={`https://github.com/${username}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex items-center gap-3 bg-white px-4 py-3 transition-all duration-300 hover:bg-brand"
+      >
+        {!imgFailed ? (
+          <img
+            src={`https://github.com/${username}.png?size=40`}
+            alt={username}
+            className="h-8 w-8 transition-opacity duration-300 group-hover:opacity-90"
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <div className="flex h-8 w-8 items-center justify-center bg-accent text-xs font-bold text-muted-foreground transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white/80">
+            {username.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground transition-colors duration-300 group-hover:text-white">
+            {username}
+          </p>
+          <p className="text-[11px] text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+            {count} document{count !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </a>
+    );
   }
 
   function CategoryCard({ doc }: { doc: Document }) {
@@ -209,22 +285,40 @@ export default function Home() {
           {/* Search — bigger, no curves */}
           <div className="relative mt-12 w-full max-w-2xl">
             <div className="flex items-center bg-white ring-1 ring-border/30 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand/20">
-              <input
-                ref={inputRef}
-                type="text"
-                value={query}
-                onChange={handleChange}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                onKeyDown={handleKeyDown}
-                placeholder="Search notes, subjects, topics..."
-                className="flex-1 border-0 bg-transparent px-8 py-6 text-xl text-foreground placeholder-muted-foreground/40 outline-none sm:text-2xl"
-                autoComplete="off"
-                spellCheck={false}
-              />
+              <div className="relative flex-1">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={query}
+                  onChange={handleChange}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Search notes, subjects, topics..."
+                  className="relative w-full border-0 bg-transparent px-8 py-6 text-xl text-foreground placeholder-muted-foreground/40 outline-none sm:text-2xl"
+                  autoComplete="off"
+                  spellCheck={false}
+                  style={{ background: "transparent" }}
+                />
+                {/* Ghost suggestion text */}
+                {suggestion && isFocused && (
+                  <span
+                    className="pointer-events-none absolute left-8 top-0 flex h-full items-center text-xl sm:text-2xl text-muted-foreground/20"
+                    aria-hidden="true"
+                  >
+                    {query.trim()}
+                    <span className="text-muted-foreground/40">{suggestion.toLowerCase()}</span>
+                  </span>
+                )}
+              </div>
               {isFocused && !query.trim() && (
                 <span className="mr-6 hidden text-xs text-muted-foreground/40 sm:inline">
                   Press Enter or wait
+                </span>
+              )}
+              {isFocused && query.trim() && suggestion && (
+                <span className="mr-6 hidden text-xs text-muted-foreground/40 sm:inline">
+                  Tab to complete
                 </span>
               )}
               {query && (
@@ -257,6 +351,19 @@ export default function Home() {
                   </div>
                 </section>
               ) : null
+            )}
+
+            {/* Contributors */}
+            {topContributors.length > 0 && (
+              <section>
+                <h2 className="mb-6 text-lg font-semibold text-foreground">Top Contributors</h2>
+                <p className="mb-4 text-sm text-muted-foreground">Students who have shared study materials with the community.</p>
+                <div className="flex flex-wrap gap-3">
+                  {topContributors.map(({ username, count }) => (
+                    <ContributorCard key={username} username={username} count={count} />
+                  ))}
+                </div>
+              </section>
             )}
 
             {/* Recently Added */}
