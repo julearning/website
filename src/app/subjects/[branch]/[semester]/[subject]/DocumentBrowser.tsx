@@ -6,6 +6,7 @@ import type { Document as JLDoc } from "@/lib/types";
 import { searchDocuments, type SearchResult } from "@/lib/search";
 import type { FilterState } from "@/lib/types";
 import { ResultCard } from "@/components/ResultCard";
+import { PaginatedGrid } from "@/components/PaginatedGrid";
 
 const SECTION_LABELS: Record<string, string> = {
   "section-a": "Section A",
@@ -99,24 +100,14 @@ export function DocumentBrowser({ docs, subject }: Props) {
         </div>
       )}
 
-      {filtered.length > 0 ? (
-        <>
-          <p className="mb-4 text-sm text-muted-foreground">{filtered.length} result{filtered.length !== 1 ? "s" : ""}{query && ` for "${query}"`}</p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((doc) => (
-              <ResultCard key={doc.id} result={{ doc, score: 0 }} />
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-col items-center py-16 text-center">
-          <Search className="mb-4 h-10 w-10 text-muted-foreground/20" />
-          <p className="text-base text-muted-foreground">No documents found</p>
-          <p className="mt-1 text-sm text-muted-foreground/50">
-            {query ? "Try a different search term." : "No documents in this section yet."}
-          </p>
-        </div>
-      )}
+      <p className="mb-4 text-sm text-muted-foreground">{filtered.length} result{filtered.length !== 1 ? "s" : ""}{query && ` for "${query}"`}</p>
+      <PaginatedGrid
+        items={filtered}
+        renderItem={(doc) => <ResultCard key={doc.id} result={{ doc, score: 0 }} />}
+        itemsPerPage={12}
+        emptyMessage={query ? "No documents found. Try a different search term." : "No documents in this section yet."}
+        emptyIcon={<Search className="mb-4 h-10 w-10 text-muted-foreground/20" />}
+      />
     </>
   );
 }

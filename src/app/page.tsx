@@ -8,6 +8,7 @@ import { searchDocuments, type SearchResult } from "@/lib/search";
 import type { FilterState, Branch } from "@/lib/types";
 import { Navbar } from "@/components/Navbar";
 import { ResultCard } from "@/components/ResultCard";
+import { PaginatedGrid } from "@/components/PaginatedGrid";
 
 const BRANCH_INFO: Record<Branch, { name: string; icon: typeof BookOpen }> = {
   CSE: { name: "Computer Science & Engineering", icon: Monitor },
@@ -165,25 +166,19 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-            ) : results.length > 0 ? (
+            ) : (
               <>
                 <p className="mb-6 text-sm text-muted-foreground">
                   {results.length} result{results.length !== 1 ? "s" : ""}
                 </p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {results.map((result) => (
-                    <ResultCard key={result.doc.id} result={result} />
-                  ))}
-                </div>
+                <PaginatedGrid
+                  items={results}
+                  renderItem={(result) => <ResultCard key={result.doc.id} result={result} />}
+                  itemsPerPage={9}
+                  emptyMessage="No results found. Try a different search term."
+                  emptyIcon={<Search className="mb-4 h-10 w-10 text-muted-foreground/20" />}
+                />
               </>
-            ) : (
-              <div className="flex flex-col items-center py-20 text-center">
-                <Search className="mb-4 h-10 w-10 text-muted-foreground/20" />
-                <p className="text-base text-muted-foreground">No results found</p>
-                <p className="mt-1 text-sm text-muted-foreground/50">
-                  Try a different search term.
-                </p>
-              </div>
             )}
           </div>
         )}
