@@ -21,7 +21,7 @@
   --accent: oklch(0.93 0.01 75);
   --surface: oklch(0.97 0.005 75);
   --border: oklch(0.88 0.01 75);
-  --brand: oklch(0.45 0.15 260);
+  --brand: #bf00ff;
 }
 
 body {
@@ -33,14 +33,13 @@ body {
 }
 
 ::selection {
-  background: oklch(0.45 0.15 260 / 0.15);
+  background: #bf00ff26;
 }
 
 @layer base {
   *:focus-visible {
     outline: 2px solid var(--brand);
     outline-offset: 2px;
-    border-radius: 4px;
   }
 }
 

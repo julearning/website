@@ -38,7 +38,7 @@ export default function BranchesPage() {
             <Link
               key={branch}
               href={`/branches/${branch.toLowerCase()}`}
-              className="group rounded-2xl bg-white p-6 transition-all duration-300 hover:bg-brand hover:border-2 hover:border-foreground"
+              className="group bg-white p-6 transition-all duration-300 hover:bg-brand"
             >
               <h2 className="text-lg font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{name}</h2>
               <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground transition-colors duration-300 group-hover:text-white/70">
@@ -48,7 +48,7 @@ export default function BranchesPage() {
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {semesters.map((sem) => (
-                  <span key={sem} className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
+                  <span key={sem} className="bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
                     S{sem}
                   </span>
                 ))}

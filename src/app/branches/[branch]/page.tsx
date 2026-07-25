@@ -60,7 +60,7 @@ export default async function BranchPage({ params }: { params: Promise<{ branch:
             <Link
               key={sem}
               href={`/semesters/${branchSlug}/${sem}`}
-              className="group rounded-2xl bg-white p-6 transition-all duration-300 hover:bg-brand hover:border-2 hover:border-foreground"
+              className="group bg-white p-6 transition-all duration-300 hover:bg-brand"
             >
               <h2 className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">Semester {sem}</h2>
               <p className="mt-1 text-sm text-muted-foreground transition-colors duration-300 group-hover:text-white/70">
@@ -68,12 +68,12 @@ export default async function BranchPage({ params }: { params: Promise<{ branch:
               </p>
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {subjects.slice(0, 6).map((subject) => (
-                  <span key={subject} className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
+                  <span key={subject} className="bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
                     {subject}
                   </span>
                 ))}
                 {subjects.length > 6 && (
-                  <span className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
+                  <span className="bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
                     +{subjects.length - 6}
                   </span>
                 )}

@@ -56,14 +56,13 @@ export function DocumentBrowser({ docs, subject }: Props) {
   return (
     <>
       <div className="mb-6 max-w-md">
-        <div className="flex items-center rounded-2xl bg-white px-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-shadow duration-200 focus-within:shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="flex items-center bg-white ring-1 ring-border/30 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand/20 px-4">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={`Search within ${subject}...`}
-            className="flex-1 border-0 bg-transparent px-3 py-3 text-sm text-foreground placeholder-muted-foreground outline-none focus:outline-none"
+            className="flex-1 border-0 bg-transparent px-3 py-3 text-sm text-foreground placeholder-muted-foreground outline-none"
             autoComplete="off"
             spellCheck={false}
           />
@@ -74,7 +73,7 @@ export function DocumentBrowser({ docs, subject }: Props) {
         <div className="mb-6 flex flex-wrap gap-1.5">
           <button
             onClick={() => setActiveSection(null)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeSection === null ? "bg-foreground text-background" : "bg-accent text-muted-foreground hover:text-foreground"}`}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${activeSection === null ? "bg-foreground text-background" : "bg-accent text-muted-foreground hover:text-foreground"}`}
           >
             All ({docs.length})
           </button>
@@ -93,7 +92,7 @@ export function DocumentBrowser({ docs, subject }: Props) {
       {!query && !activeSection && (
         <div className="mb-6 flex flex-wrap gap-1.5">
           {Object.entries(tagCounts).map(([tag, count]) => (
-            <span key={tag} className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
+            <span key={tag} className="bg-accent px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
               {tag.replace("-", " ")} ({count})
             </span>
           ))}

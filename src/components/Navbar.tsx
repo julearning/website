@@ -79,18 +79,17 @@ export function Navbar() {
       </div>
 
       {/* Mobile menu dropdown */}
-      {menuOpen && (
-        <div className="mx-auto mt-4 max-w-5xl px-6 sm:hidden">
-          <div className="rounded-2xl bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+      {menuOpen && (        <div className="mx-auto mt-4 max-w-5xl px-6 sm:hidden">
+          <div className="bg-white p-3 transition-colors duration-300 hover:bg-brand">
             <nav className="flex flex-col gap-1">
               {NAV_LINKS.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                  className={`px-3 py-2.5 text-sm transition-colors ${
                     pathname.startsWith(link.href)
                       ? "bg-accent font-medium text-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {link.label}
@@ -100,7 +99,7 @@ export function Navbar() {
                 href="https://github.com/julearning"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
                 GitHub
               </a>

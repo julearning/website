@@ -61,17 +61,8 @@ export default function Home() {
     <>
       <Navbar />
       <main className="mx-auto max-w-6xl px-6 pb-16">
-        {/* Hero — centered, brand-focused */}
-        <div className="relative flex min-h-[60vh] flex-col items-center justify-center text-center sm:min-h-[65vh]">
-          {/* Decorative background */}
-          <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-            <img
-              src="/images/hero-bg.jpg"
-              alt=""
-              className="h-full w-full object-cover opacity-[0.04] saturate-0"
-            />
-          </div>
-
+        {/* Hero — full-screen, centered */}
+        <div className="flex min-h-screen flex-col items-center justify-center text-center">
           <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-7xl lg:text-8xl">
             JU Learning
           </h1>
@@ -79,9 +70,9 @@ export default function Home() {
             Every branch. Every semester. Every note.
           </p>
 
-          {/* Search — clean, centered, no shadows */}
-          <div className="relative mt-10 w-full max-w-xl">
-            <div className="flex items-center rounded-2xl bg-white ring-1 ring-border/30 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand/20">
+          {/* Search — bigger, no curves */}
+          <div className="relative mt-12 w-full max-w-2xl">
+            <div className="flex items-center bg-white ring-1 ring-border/30 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand/20">
               <input
                 ref={inputRef}
                 type="text"
@@ -91,21 +82,21 @@ export default function Home() {
                 onBlur={() => setIsFocused(false)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search notes, subjects, topics..."
-                className="flex-1 border-0 bg-transparent px-6 py-4 text-base text-foreground placeholder-muted-foreground/40 outline-none sm:text-lg"
+                className="flex-1 border-0 bg-transparent px-8 py-6 text-xl text-foreground placeholder-muted-foreground/40 outline-none sm:text-2xl"
                 autoComplete="off"
                 spellCheck={false}
               />
               {isFocused && !query.trim() && (
-                <span className="mr-5 hidden text-xs text-muted-foreground/40 sm:inline">
+                <span className="mr-6 hidden text-xs text-muted-foreground/40 sm:inline">
                   Press Enter
                 </span>
               )}
               {query && (
                 <button
                   onClick={handleClear}
-                  className="mr-3 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors hover:text-foreground"
+                  className="mr-4 flex h-10 w-10 items-center justify-center text-muted-foreground/50 transition-colors hover:text-foreground"
                 >
-                  <span className="text-lg leading-none">&times;</span>
+                  <span className="text-xl leading-none">&times;</span>
                 </button>
               )}
             </div>
@@ -114,7 +105,7 @@ export default function Home() {
 
         {/* Browse sections — shown when nothing is searched */}
         {!hasSearched && (
-          <div className="mt-8 space-y-16">
+          <div className="space-y-16">
             {/* Browse by Branch */}
             <section>
               <div className="mb-6 flex items-center justify-between">
@@ -132,7 +123,7 @@ export default function Home() {
                     <Link
                       key={branch}
                       href={`/branches/${branch.toLowerCase()}`}
-                      className="group rounded-2xl bg-white p-6 transition-all duration-300 hover:bg-brand hover:border-2 hover:border-foreground"
+                      className="group bg-white p-6 transition-all duration-300 hover:bg-brand"
                     >
                       <p className="text-sm font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
                         {branch}
@@ -144,7 +135,7 @@ export default function Home() {
                         {semesters.slice(0, 5).map((sem) => (
                           <span
                             key={sem}
-                            className="rounded-md bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80"
+                            className="bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80"
                           >
                             S{sem}
                           </span>
@@ -172,7 +163,7 @@ export default function Home() {
                         setQuery(`semester ${sem}`);
                         performSearch(`semester ${sem}`);
                       }}
-                      className="group rounded-2xl bg-white p-5 text-center transition-all duration-300 hover:bg-brand hover:border-2 hover:border-foreground"
+                      className="group bg-white p-5 text-center transition-all duration-300 hover:bg-brand"
                     >
                       <p className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
                         {sem}
@@ -202,7 +193,7 @@ export default function Home() {
                         setQuery(subject);
                         performSearch(subject);
                       }}
-                      className="group rounded-2xl bg-white p-5 text-left transition-all duration-300 hover:bg-brand hover:border-2 hover:border-foreground"
+                      className="group bg-white p-5 text-left transition-all duration-300 hover:bg-brand"
                     >
                       <p className="text-sm font-medium text-foreground transition-colors duration-300 group-hover:text-white">
                         {subject}
@@ -224,11 +215,11 @@ export default function Home() {
             {isLoading ? (
               <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="mb-5 animate-pulse break-inside-avoid overflow-hidden rounded-2xl bg-white">
+                  <div key={i} className="mb-5 animate-pulse break-inside-avoid overflow-hidden bg-white">
                     <div className="h-56 bg-accent" />
                     <div className="p-4">
-                      <div className="mb-2 h-4 w-3/4 rounded bg-accent/50" />
-                      <div className="h-3 w-1/2 rounded bg-accent/30" />
+                      <div className="mb-2 h-4 w-3/4 bg-accent/50" />
+                      <div className="h-3 w-1/2 bg-accent/30" />
                     </div>
                   </div>
                 ))}

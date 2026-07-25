@@ -93,7 +93,7 @@ export default async function SemesterPage({ params }: { params: Promise<{ branc
             <Link
               key={subject}
               href={`/subjects/${branchSlug}/${semester}/${encodeURIComponent(subject)}`}
-              className="group rounded-2xl bg-white p-6 transition-all duration-300 hover:bg-brand hover:border-2 hover:border-foreground"
+              className="group bg-white p-6 transition-all duration-300 hover:bg-brand"
             >
               <div className="min-w-0">
                 <h2 className="text-base font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{subject}</h2>
@@ -103,7 +103,7 @@ export default async function SemesterPage({ params }: { params: Promise<{ branc
               </div>
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
+                  <span key={tag} className="bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
                     {TAG_LABELS[tag] || tag.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                   </span>
                 ))}
@@ -111,7 +111,7 @@ export default async function SemesterPage({ params }: { params: Promise<{ branc
               {sections.length > 1 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {sections.map((s) => (
-                    <span key={s} className="rounded-md border border-border/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/60 transition-colors duration-300 group-hover:border-white/30 group-hover:text-white/60">
+                    <span key={s} className="border border-border/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/60 transition-colors duration-300 group-hover:border-white/30 group-hover:text-white/60">
                       {s === "section-a" ? "Sec A" : s === "section-b" ? "Sec B" : "Mixed"}
                     </span>
                   ))}

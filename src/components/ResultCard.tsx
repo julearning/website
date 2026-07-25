@@ -29,7 +29,7 @@ export function ResultCard({ result }: { result: SearchResult }) {
       href={doc.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block break-inside-avoid overflow-hidden rounded-2xl bg-white transition-all duration-300 hover:bg-brand hover:border-2 hover:border-foreground mb-5"
+      className="group block break-inside-avoid overflow-hidden bg-white transition-all duration-300 hover:bg-brand mb-5"
     >
       {/* Thumbnail */}
       <div className="relative overflow-hidden bg-accent">
@@ -42,10 +42,10 @@ export function ResultCard({ result }: { result: SearchResult }) {
               loading="lazy"
               onError={() => setImgFailed(true)}
             />
-            <div className="absolute inset-0 bg-transparent transition-colors duration-300 group-hover:bg-brand/10" />
+            <div className="absolute inset-0 bg-transparent transition-colors duration-300 group-hover:bg-[#bf00ff]/10" />
           </>
         ) : (
-          <div className="flex h-56 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand/80 group-hover:to-brand/60">
+          <div className="flex h-56 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
             <span className="text-4xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
               {doc.title.charAt(0).toUpperCase()}
             </span>
@@ -57,7 +57,7 @@ export function ResultCard({ result }: { result: SearchResult }) {
             {displayTags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-lg bg-white/95 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white group-hover:shadow-none"
+                className="bg-white/95 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white"
               >
                 {TAG_LABELS[tag] || tag}
               </span>
@@ -84,7 +84,7 @@ export function ResultCard({ result }: { result: SearchResult }) {
           <span className="text-[11px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/50">
             {formatFileSize(doc.fileSize)}
           </span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground/60 transition-colors duration-300 group-hover:text-white/80">
+          <span className="text-[11px] font-medium text-foreground/60 transition-colors duration-300 group-hover:text-white/80">
             Download
           </span>
         </div>

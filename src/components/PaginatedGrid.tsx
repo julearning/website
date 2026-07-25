@@ -48,7 +48,7 @@ export function PaginatedGrid<T>({
 
   return (
     <>
-      {/* Pinterest-style masonry columns */}
+      {/* Masonry columns */}
       <div className="columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
         {visibleItems.map((item, index) => renderItem(item, index))}
       </div>
@@ -59,7 +59,7 @@ export function PaginatedGrid<T>({
           </p>
           <button
             onClick={() => setPage((p) => p + 1)}
-            className="inline-flex items-center gap-2 rounded-2xl bg-foreground px-8 py-3.5 text-sm font-medium text-background transition-all duration-200 hover:opacity-90"
+            className="inline-flex items-center gap-2 bg-foreground px-8 py-3.5 text-sm font-medium text-background transition-all duration-200 hover:opacity-90"
           >
             Show {remaining > itemsPerPage ? itemsPerPage : remaining} more
           </button>
