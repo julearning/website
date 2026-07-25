@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
+
 import type { Document as JLDoc } from "@/lib/types";
 import { searchDocuments, type SearchResult } from "@/lib/search";
 import type { FilterState } from "@/lib/types";
@@ -43,16 +44,6 @@ export function DocumentBrowser({ docs, subject }: Props) {
     return filtered;
   }, [docs, query, activeSection]);
 
-  const tagCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const d of docs) {
-      for (const tag of d.tags) {
-        counts[tag] = (counts[tag] || 0) + 1;
-      }
-    }
-    return counts;
-  }, [docs]);
-
   return (
     <>
       <div className="mb-6 max-w-md">
@@ -81,20 +72,10 @@ export function DocumentBrowser({ docs, subject }: Props) {
             <button
               key={sec}
               onClick={() => setActiveSection(sec)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeSection === sec ? "bg-foreground text-background" : "bg-accent text-muted-foreground hover:text-foreground"}`}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${activeSection === sec ? "bg-foreground text-background" : "bg-accent text-muted-foreground hover:text-foreground"}`}
             >
               {SECTION_LABELS[sec] || sec} ({docs.filter((d) => d.section === sec).length})
             </button>
-          ))}
-        </div>
-      )}
-
-      {!query && !activeSection && (
-        <div className="mb-6 flex flex-wrap gap-1.5">
-          {Object.entries(tagCounts).map(([tag, count]) => (
-            <span key={tag} className="bg-accent px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
-              {tag.replace("-", " ")} ({count})
-            </span>
           ))}
         </div>
       )}

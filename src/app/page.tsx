@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { documents, getUniqueBranches, getDocumentsByBranch } from "@/data/documents";
 import { searchDocuments, type SearchResult } from "@/lib/search";
-import type { FilterState, Branch } from "@/lib/types";
+import type { FilterState, Branch, Document } from "@/lib/types";
 import { Navbar } from "@/components/Navbar";
 import { ResultCard } from "@/components/ResultCard";
 import { PaginatedGrid } from "@/components/PaginatedGrid";
@@ -52,10 +52,26 @@ export default function Home() {
     inputRef.current?.focus();
   }
 
+  // Recent documents sorted by upload date (newest first)
+  const recentDocs = useMemo(() => {
+    return [...documents]
+      .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())
+      .slice(0, 6);
+  }, []);
+
   const branches = getUniqueBranches();
   const allSemesters = [...new Set(documents.map((d) => d.semester))].sort((a, b) => a - b);
   const allSubjects = [...new Set(documents.map((d) => d.subject))].sort();
   const topSubjects = allSubjects.slice(0, 12);
+
+  function formatDate(dateStr: string | undefined) {
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch {
+      return "";
+    }
+  }
 
   return (
     <>
@@ -105,7 +121,35 @@ export default function Home() {
 
         {/* Browse sections — shown when nothing is searched */}
         {!hasSearched && (
-          <div className="space-y-16">
+          <div className="space-y-20">
+            {/* Recently Added */}
+            <section>
+              <h2 className="mb-6 text-lg font-semibold text-foreground">Recently Added</h2>
+              <div className="space-y-3">
+                {recentDocs.map((doc) => (
+                  <a
+                    key={doc.id}
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center gap-4 bg-white p-5 transition-all duration-300 hover:bg-brand"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
+                        {doc.title}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+                        {doc.branch} · Semester {doc.semester} · {doc.subject}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-xs text-muted-foreground/40 transition-colors duration-300 group-hover:text-white/50">
+                      {formatDate(doc.uploadedAt)}
+                    </p>
+                  </a>
+                ))}
+              </div>
+            </section>
+
             {/* Browse by Branch */}
             <section>
               <div className="mb-6 flex items-center justify-between">
@@ -123,24 +167,14 @@ export default function Home() {
                     <Link
                       key={branch}
                       href={`/branches/${branch.toLowerCase()}`}
-                      className="group bg-white p-6 transition-all duration-300 hover:bg-brand"
+                      className="group bg-white p-7 transition-all duration-300 hover:bg-brand"
                     >
-                      <p className="text-sm font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
+                      <p className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
                         {branch}
                       </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+                      <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
                         {docCount} documents · {semesters.length} semesters
                       </p>
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {semesters.slice(0, 5).map((sem) => (
-                          <span
-                            key={sem}
-                            className="bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80"
-                          >
-                            S{sem}
-                          </span>
-                        ))}
-                      </div>
                     </Link>
                   );
                 })}
@@ -150,10 +184,7 @@ export default function Home() {
             {/* Browse by Semester */}
             <section>
               <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Semester</h2>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Pick a semester to find materials across all branches.
-              </p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
                 {allSemesters.map((sem) => {
                   const docCount = documents.filter((d) => d.semester === sem).length;
                   return (
@@ -163,12 +194,12 @@ export default function Home() {
                         setQuery(`semester ${sem}`);
                         performSearch(`semester ${sem}`);
                       }}
-                      className="group bg-white p-5 text-center transition-all duration-300 hover:bg-brand"
+                      className="group bg-white p-6 text-center transition-all duration-300 hover:bg-brand"
                     >
-                      <p className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
+                      <p className="text-2xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
                         {sem}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+                      <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
                         {docCount} docs
                       </p>
                     </button>
@@ -180,10 +211,7 @@ export default function Home() {
             {/* Browse by Subject */}
             <section>
               <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Subject</h2>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Jump straight to a subject across all semesters.
-              </p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {topSubjects.map((subject) => {
                   const docCount = documents.filter((d) => d.subject === subject).length;
                   return (
@@ -193,12 +221,12 @@ export default function Home() {
                         setQuery(subject);
                         performSearch(subject);
                       }}
-                      className="group bg-white p-5 text-left transition-all duration-300 hover:bg-brand"
+                      className="group bg-white p-6 text-left transition-all duration-300 hover:bg-brand"
                     >
-                      <p className="text-sm font-medium text-foreground transition-colors duration-300 group-hover:text-white">
+                      <p className="text-base font-medium text-foreground transition-colors duration-300 group-hover:text-white">
                         {subject}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+                      <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
                         {docCount} documents
                       </p>
                     </button>

@@ -25,7 +25,7 @@ export default function DegreePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-16">
-      <div className="pt-12 sm:pt-16">
+      <div className="pt-16 sm:pt-20">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "B.Tech" }]} />
 
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -36,7 +36,7 @@ export default function DegreePage() {
         </p>
       </div>
 
-      <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {branches.map((branch) => {
           const name = BRANCH_NAMES[branch as Branch] || branch;
           const docs = getDocumentsByBranch(branch);
@@ -47,27 +47,12 @@ export default function DegreePage() {
             <Link
               key={branch}
               href={`/branches/${branch.toLowerCase()}`}
-              className="group bg-white p-6 transition-all duration-300 hover:bg-brand"
+              className="group bg-white p-8 transition-all duration-300 hover:bg-brand"
             >
-              <h2 className="text-lg font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{name}</h2>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                <span className="bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
-                  {docs.length} docs
-                </span>
-                <span className="bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
-                  {sems.length} semesters
-                </span>
-                <span className="bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
-                  {subs.length} subjects
-                </span>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-1">
-                {sems.map((sem) => (
-                  <span key={sem} className="bg-accent/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/70 transition-colors duration-300 group-hover:bg-white/10 group-hover:text-white/60">
-                    S{sem}
-                  </span>
-                ))}
-              </div>
+              <h2 className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{name}</h2>
+              <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+                {docs.length} documents · {sems.length} semesters · {subs.length} subjects
+              </p>
             </Link>
           );
         })}

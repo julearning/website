@@ -18,18 +18,6 @@ const BRANCH_NAMES: Record<Branch, string> = {
   CE: "Civil Engineering",
 };
 
-const TAG_LABELS: Record<string, string> = {
-  notes: "Notes",
-  pyq: "PYQ",
-  assignment: "Assignment",
-  "lab-manual": "Lab Manual",
-  syllabus: "Syllabus",
-  handwritten: "Handwritten",
-  typed: "Typed",
-  "reference-book": "Ref Book",
-  "project-report": "Project",
-};
-
 export async function generateStaticParams() {
   const params: { branch: string; semester: string }[] = [];
   for (const slug of Object.keys(BRANCH_MAP)) {
@@ -70,7 +58,7 @@ export default async function SemesterPage({ params }: { params: Promise<{ branc
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-16">
-      <div className="pt-12 sm:pt-16">
+      <div className="pt-16 sm:pt-20">
         <Breadcrumbs items={[
           { label: "Home", href: "/" },
           { label: "Branches", href: "/branches" },
@@ -79,44 +67,24 @@ export default async function SemesterPage({ params }: { params: Promise<{ branc
         ]} />
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{BRANCH_NAMES[branch] || branch} — Semester {semester}</h1>
-          <p className="mt-1 text-base text-muted-foreground">{subjects.length} subject{subjects.length !== 1 ? "s" : ""} · {branchDocs.length} document{branchDocs.length !== 1 ? "s" : ""}</p>
+          <p className="mt-2 text-base text-muted-foreground">{subjects.length} subjects · {branchDocs.length} documents</p>
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {subjects.map(([subject, subjectDocs]) => {
-          const tags = [...new Set(subjectDocs.flatMap((d) => d.tags))];
           const totalSize = subjectDocs.reduce((sum, d) => sum + d.fileSize, 0);
-          const sections = [...new Set(subjectDocs.map((d) => d.section))];
 
           return (
             <Link
               key={subject}
               href={`/subjects/${branchSlug}/${semester}/${encodeURIComponent(subject)}`}
-              className="group bg-white p-6 transition-all duration-300 hover:bg-brand"
+              className="group bg-white p-8 transition-all duration-300 hover:bg-brand"
             >
-              <div className="min-w-0">
-                <h2 className="text-base font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{subject}</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground transition-colors duration-300 group-hover:text-white/70">
-                  {subjectDocs.length} document{subjectDocs.length !== 1 ? "s" : ""}{totalSize > 0 && ` · ${formatFileSize(totalSize)}`}
-                </p>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:bg-white/15 group-hover:text-white/80">
-                    {TAG_LABELS[tag] || tag.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                  </span>
-                ))}
-              </div>
-              {sections.length > 1 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {sections.map((s) => (
-                    <span key={s} className="border border-border/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/60 transition-colors duration-300 group-hover:border-white/30 group-hover:text-white/60">
-                      {s === "section-a" ? "Sec A" : s === "section-b" ? "Sec B" : "Mixed"}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <h2 className="text-lg font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{subject}</h2>
+              <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+                {subjectDocs.length} documents{totalSize > 0 && ` · ${formatFileSize(totalSize)}`}
+              </p>
             </Link>
           );
         })}
