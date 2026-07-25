@@ -100,27 +100,6 @@ export function ResultCard({ result }: { result: SearchResult }) {
             {doc.branch} S{doc.semester}
           </p>
 
-          {/* Contributor */}
-          {doc.contributor && (
-            <a
-              href={`https://github.com/${doc.contributor}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="mt-2 inline-flex items-center gap-1.5 transition-colors duration-300 hover:opacity-80"
-            >
-              <img
-                src={`https://github.com/${doc.contributor}.png?size=20`}
-                alt={doc.contributor}
-                className="h-4 w-4"
-                loading="lazy"
-              />
-              <span className="text-[11px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/60">
-                {doc.contributor}
-              </span>
-            </a>
-          )}
-
           {/* File size + download */}
           <div className="mt-3 flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/50">
@@ -133,16 +112,37 @@ export function ResultCard({ result }: { result: SearchResult }) {
         </div>
       </a>
 
-      {/* Report broken link — visible on hover only */}
-      <a
-        href={getReportUrl(doc)}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => e.stopPropagation()}
-        className="block border-t border-border/30 px-4 py-2 text-[10px] text-muted-foreground/40 opacity-0 transition-all duration-300 hover:text-foreground group-hover:opacity-100 group-hover:border-white/20 group-hover:text-white/60"
-      >
-        Report broken link
-      </a>
+      {/* Footer: contributor + report link */}
+      <div className="border-t border-border/30 transition-colors duration-300 group-hover:border-white/20">
+        {doc.contributor && (
+          <a
+            href={`https://github.com/${doc.contributor}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 px-4 py-2 transition-colors duration-300 hover:opacity-80"
+          >
+            <img
+              src={`https://github.com/${doc.contributor}.png?size=20`}
+              alt={doc.contributor}
+              className="h-3.5 w-3.5"
+              loading="lazy"
+            />
+            <span className="text-[10px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/60">
+              {doc.contributor}
+            </span>
+          </a>
+        )}
+        <a
+          href={getReportUrl(doc)}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="block px-4 py-1.5 text-[10px] text-muted-foreground/40 opacity-0 transition-all duration-300 hover:text-foreground group-hover:opacity-100 group-hover:text-white/60"
+        >
+          Report broken link
+        </a>
+      </div>
     </div>
   );
 }
