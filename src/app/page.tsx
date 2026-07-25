@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Search, Download, FileText } from "lucide-react";
 import { documents } from "@/data/documents";
 import { searchDocuments, type SearchResult } from "@/lib/search";
@@ -86,26 +86,37 @@ export default function Home() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!query.trim()) {
+  function performSearch(q: string) {
+    if (!q.trim()) {
       setResults([]);
       setHasSearched(false);
       return;
     }
     setIsLoading(true);
     setHasSearched(true);
-    const timer = setTimeout(() => {
-      const filters: FilterState = {
-        query, branch: null, semester: null, subject: null,
-        tags: [], sort: "relevance",
-      };
-      setResults(searchDocuments(documents, filters));
-      setIsLoading(false);
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [query]);
+    const filters: FilterState = {
+      query: q, branch: null, semester: null, subject: null,
+      tags: [], sort: "relevance",
+    };
+    setResults(searchDocuments(documents, filters));
+    setIsLoading(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      performSearch(query);
+    }
+  }
+
+  function handleClear() {
+    setQuery("");
+    setResults([]);
+    setHasSearched(false);
+    inputRef.current?.focus();
+  }
 
   return (
     <>
@@ -127,14 +138,22 @@ export default function Home() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                onKeyDown={handleKeyDown}
                 placeholder="Search notes, subjects, topics..."
                 className="flex-1 border-0 bg-transparent px-3 py-4 text-base text-foreground placeholder-muted-foreground outline-none focus:outline-none sm:text-lg"
                 autoComplete="off"
                 spellCheck={false}
               />
+              {isFocused && !query.trim() && (
+                <span className="mr-3 hidden text-[11px] text-muted-foreground/40 sm:inline">
+                  Press Enter to search
+                </span>
+              )}
               {query && (
                 <button
-                  onClick={() => { setQuery(""); inputRef.current?.focus(); }}
+                  onClick={handleClear}
                   className="mr-3 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 >
                   <span className="text-lg leading-none">&times;</span>
