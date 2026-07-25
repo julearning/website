@@ -24,11 +24,11 @@ export default function BranchesPage() {
     <div className="mx-auto max-w-6xl px-6 pb-16">
       <div className="pt-16 sm:pt-20">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Branches" }]} />
-        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Engineering Branches</h1>
-        <p className="mt-2 text-base text-muted-foreground">Select your branch to browse study materials by semester and subject.</p>
+        <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">Engineering Branches</h1>
+        <p className="mt-3 text-base text-muted-foreground">Select your branch to browse study materials by semester and subject.</p>
       </div>
 
-      <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {branches.map((branch) => {
           const name = BRANCH_NAMES[branch as Branch] || branch;
           const docCount = getDocumentsByBranch(branch).length;
@@ -40,8 +40,8 @@ export default function BranchesPage() {
               href={`/branches/${branch.toLowerCase()}`}
               className="group bg-white p-8 transition-all duration-300 hover:bg-brand"
             >
-              <h2 className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{name}</h2>
-              <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+              <h2 className="text-2xl font-bold text-foreground transition-colors duration-300 group-hover:text-white">{name}</h2>
+              <p className="mt-3 text-base text-muted-foreground transition-colors duration-300 group-hover:text-white/80">
                 {docCount} documents · {semesters.length} semesters
               </p>
             </Link>

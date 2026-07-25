@@ -28,15 +28,15 @@ export default function DegreePage() {
       <div className="pt-16 sm:pt-20">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "B.Tech" }]} />
 
-        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
           Bachelor of Technology (B.Tech)
         </h1>
-        <p className="mt-2 text-base text-muted-foreground">
+        <p className="mt-3 text-base text-muted-foreground">
           {totalDocs} study materials across {branches.length} branches, {allSems.length} semesters, and {allSubjects.length} subjects.
         </p>
       </div>
 
-      <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {branches.map((branch) => {
           const name = BRANCH_NAMES[branch as Branch] || branch;
           const docs = getDocumentsByBranch(branch);
@@ -49,8 +49,8 @@ export default function DegreePage() {
               href={`/branches/${branch.toLowerCase()}`}
               className="group bg-white p-8 transition-all duration-300 hover:bg-brand"
             >
-              <h2 className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{name}</h2>
-              <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+              <h2 className="text-2xl font-bold text-foreground transition-colors duration-300 group-hover:text-white">{name}</h2>
+              <p className="mt-3 text-base text-muted-foreground transition-colors duration-300 group-hover:text-white/80">
                 {docs.length} documents · {sems.length} semesters · {subs.length} subjects
               </p>
             </Link>

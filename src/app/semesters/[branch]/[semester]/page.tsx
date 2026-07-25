@@ -66,12 +66,12 @@ export default async function SemesterPage({ params }: { params: Promise<{ branc
           { label: `Semester ${semester}` },
         ]} />
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{BRANCH_NAMES[branch] || branch} — Semester {semester}</h1>
-          <p className="mt-2 text-base text-muted-foreground">{subjects.length} subjects · {branchDocs.length} documents</p>
+          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">{BRANCH_NAMES[branch] || branch} — Semester {semester}</h1>
+          <p className="mt-3 text-base text-muted-foreground">{subjects.length} subjects · {branchDocs.length} documents</p>
         </div>
       </div>
 
-      <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {subjects.map(([subject, subjectDocs]) => {
           const totalSize = subjectDocs.reduce((sum, d) => sum + d.fileSize, 0);
 
@@ -81,8 +81,8 @@ export default async function SemesterPage({ params }: { params: Promise<{ branc
               href={`/subjects/${branchSlug}/${semester}/${encodeURIComponent(subject)}`}
               className="group bg-white p-8 transition-all duration-300 hover:bg-brand"
             >
-              <h2 className="text-lg font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{subject}</h2>
-              <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+              <h2 className="text-2xl font-bold text-foreground transition-colors duration-300 group-hover:text-white">{subject}</h2>
+              <p className="mt-3 text-base text-muted-foreground transition-colors duration-300 group-hover:text-white/80">
                 {subjectDocs.length} documents{totalSize > 0 && ` · ${formatFileSize(totalSize)}`}
               </p>
             </Link>
