@@ -81,7 +81,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     }
     debounceRef.current = setTimeout(() => {
       performSearch(q);
-    }, 3000);
+    }, 1000);
   };
 
   // Search autocomplete: match titles/subjects that start with the typed query
