@@ -259,7 +259,11 @@ export default function DriveAutomationPage() {
           </div>
           <div>
             <p className="font-semibold text-foreground">Step 3: Generate JSON</p>
-            <p className="mt-1">Fill in default values, click Generate, and download each JSON file. Upload them to the <a href="https://github.com/julearning/metadata" target="_blank" rel="noopener noreferrer" className="text-brand underline transition-opacity hover:opacity-70">metadata repo</a>.</p>
+            <p className="mt-1">Fill in default values, click Generate, and download each JSON file.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">Step 4: Open a PR</p>
+            <p className="mt-1">Clone the <a href="https://github.com/julearning/metadata" target="_blank" rel="noopener noreferrer" className="text-brand underline transition-opacity hover:opacity-70">metadata repo</a>, drop each JSON file into the correct folder (<code className="rounded bg-accent px-1 py-0.5 text-xs">CSE/semester-4/Subject-Name/</code>), commit, and open a pull request. Someone will review and merge it — once merged, the website rebuilds with your documents.</p>
           </div>
         </div>
         <p className="mt-4 text-xs text-muted-foreground/60">
