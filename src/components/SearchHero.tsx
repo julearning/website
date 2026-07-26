@@ -257,7 +257,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
           )}
 
           {isLoading ? (
-            <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
+            <div className="columns-2 gap-5 lg:columns-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="mb-5 animate-pulse break-inside-avoid overflow-hidden bg-surface">
                   <div className="h-56 bg-accent" />

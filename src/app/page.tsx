@@ -189,7 +189,7 @@ export default function Home() {
                 <h2 className="text-xl font-bold text-foreground">{cat.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{cat.subtitle}</p>
               </div>
-              <div className="columns-1 gap-3 sm:columns-2 lg:columns-3">
+              <div className="columns-2 gap-3 lg:columns-3">
                 {cat.docs.map((doc) => (
                   <CategoryCard key={doc.id} doc={doc} />
                 ))}
@@ -214,7 +214,7 @@ export default function Home() {
         {/* Recently Added */}
         <RevealSection delay={0.15}>
           <h2 className="mb-6 text-lg font-semibold text-foreground">Recently Added</h2>
-          <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
+          <div className="columns-2 gap-5 lg:columns-3">
             {recentDocs.map((doc) => (
               <CategoryCard key={doc.id} doc={doc} />
             ))}
@@ -229,7 +229,7 @@ export default function Home() {
               View all →
             </Link>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
             {branches.map((branch) => {
               const docCount = getDocumentsByBranch(branch).length;
               const semesters = [...new Set(getDocumentsByBranch(branch).map((d) => d.semester))].sort();

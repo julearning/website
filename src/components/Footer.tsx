@@ -4,7 +4,7 @@ export function Footer() {
   return (
     <footer>
       <div className="mx-auto max-w-6xl px-6 py-12">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           {/* Brand */}
           <div className="sm:col-span-2 md:col-span-1">
             <Link

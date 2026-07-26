@@ -284,7 +284,7 @@ export default function DriveAutomationPage() {
         <summary className="cursor-pointer text-sm font-semibold text-foreground transition-opacity hover:opacity-70">
           Default values for all generated files
         </summary>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">GitHub Username</label>
             <input

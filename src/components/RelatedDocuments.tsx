@@ -105,7 +105,7 @@ export function RelatedDocuments({ docs }: Props) {
       <p className="mt-1.5 text-sm text-muted-foreground">
         Other study materials for <span className="font-medium text-foreground">{docs[0].subject}</span> across different branches and semesters
       </p>
-      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-2 gap-5 lg:grid-cols-3">
         {docs.map((doc) => (
           <RelatedCard key={doc.id} doc={doc} />
         ))}

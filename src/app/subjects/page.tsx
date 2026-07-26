@@ -35,7 +35,7 @@ export default function SubjectsPage() {
     <main className="mx-auto max-w-6xl px-6 pb-16">
       <SearchHero title="All Subjects" subtitle="Browse study materials organized by subject." />
 
-      <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-12 grid grid-cols-2 gap-6 lg:grid-cols-3">
         {subjects.map((subject) => {
           const info = subjectMap.get(subject)!;
           const branchesList = [...info.branches].sort().join(", ");

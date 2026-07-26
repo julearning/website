@@ -87,7 +87,7 @@ export function PaginatedGrid<T>({
   return (
     <>
       {/* Masonry columns */}
-      <div className="columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
+      <div className="columns-2 gap-5 lg:columns-3 xl:columns-4">
         {visibleItems.map((item, index) => renderItem(item, index))}
       </div>
 
