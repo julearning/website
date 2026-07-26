@@ -92,7 +92,7 @@ function getSemesters(branch: string): number[] {
 }
 
 function getSubjects(branch: string, semester: number): string[] {
-  return [...new Set(juDocs.filter((d) => d.branch === branch && d.semester === semester).map((d) => d.subject).filter(Boolean))]
+  return [...new Set(juDocs.filter((d) => d.branch === branch && d.semester === semester).map((d) => d.subject).filter((s): s is string => !!s))]
     .filter((s) => !/^Semester\s+\d+$/i.test(s))
     .sort();
 }

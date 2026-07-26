@@ -20,7 +20,7 @@ export async function generateStaticParams() {
   const params: { branch: string; semester: string; subject: string }[] = [];
   for (const doc of documents) {
     const slug = Object.entries(BRANCH_MAP).find(([, v]) => v === doc.branch)?.[0];
-    if (slug) {
+    if (slug && doc.semester != null && doc.subject) {
       params.push({ branch: slug, semester: String(doc.semester), subject: encodeURIComponent(doc.subject) });
     }
   }

@@ -168,7 +168,12 @@ function flattenDocuments(jsonFiles, cloneRoot) {
 
       // --- Format 1: Simplified array ---
       if (isArrayFormat(data)) {
-        const { branch, semester, subject } = inferFromPath(filePath, cloneRoot);
+        // For JU sources: infer branch/semester/subject from folder path
+        // For non-JU sources: leave them empty (just title, description, url)
+        const hasPathContext = source === "jammu-university";
+        const { branch, semester, subject } = hasPathContext
+          ? inferFromPath(filePath, cloneRoot)
+          : { branch: null, semester: null, subject: null };
 
         for (const doc of data) {
           if (!doc.title || !doc.url) {
@@ -183,17 +188,17 @@ function flattenDocuments(jsonFiles, cloneRoot) {
           docs.push({
             id,
             title: doc.title,
-            description: `${subject} — ${doc.type || "mixed"}`,
+            description: doc.description || "",
             url: doc.url,
-            thumbnailUrl: doc.thumbnailUrl || getThumbnailUrl(doc.url),
+            thumbnailUrl: doc.thumbnailUrl || "",
             fileType,
             fileSize: doc.fileSize || 0,
             branch,
             semester,
             subject,
-            type: doc.type || "mixed",
-            contributor: doc.contributor || "",
-            uploadedAt: doc.uploadedAt || "",
+            type: doc.type || null,
+            contributor: doc.contributor || null,
+            uploadedAt: doc.uploadedAt || null,
             source,
           });
         }
@@ -312,7 +317,7 @@ function generateFile(docs) {
     "",
     "export function getUniqueSubjects(branch?: string): string[] {",
     "  const filtered = branch ? documents.filter((d: Document) => d.branch === branch) : documents;",
-    "  return [...new Set(filtered.map((d: Document) => d.subject))].sort();",
+    "  return [...new Set(filtered.map((d: Document) => d.subject).filter((s): s is string => !!s))].sort();",
     "}",
     "",
     "export function getUniqueSemesters(branch?: string): number[] {",

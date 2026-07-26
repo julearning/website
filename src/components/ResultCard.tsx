@@ -59,12 +59,24 @@ export function ResultCard({ result }: { result: SearchResult }) {
             {doc.title}
           </h3>
 
-          {/* Taxonomy row */}
-          <p className="mt-2 text-sm text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70">
-            {doc.subject}
-            <span className="mx-1.5 text-muted-foreground/30 transition-colors duration-300 group-hover:text-white/30">·</span>
-            {doc.branch} S{doc.semester}
-          </p>
+          {/* Taxonomy row — only for JU documents */}
+          {doc.source === "jammu-university" && doc.subject && (
+            <p className="mt-2 text-sm text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70">
+              {doc.subject}
+              {doc.branch && (
+                <>
+                  <span className="mx-1.5 text-muted-foreground/30 transition-colors duration-300 group-hover:text-white/30">·</span>
+                  {doc.branch}{doc.semester ? ` S${doc.semester}` : ""}
+                </>
+              )}
+            </p>
+          )}
+          {/* For non-JU docs, show description instead */}
+          {doc.source !== "jammu-university" && doc.description && (
+            <p className="mt-2 text-sm text-muted-foreground/70 line-clamp-2 transition-colors duration-300 group-hover:text-white/70">
+              {doc.description}
+            </p>
+          )}
 
           {/* File size + download */}
           <div className="mt-3 flex items-center justify-between">

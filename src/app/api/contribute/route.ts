@@ -6,8 +6,10 @@ const GITHUB_REPO = "metadata";
 interface SingleDoc {
   title: string;
   url: string;
+  thumbnailUrl?: string;
   type: string;
   contributor: string;
+  source?: string;
   branch: string;
   semester: number;
   subject: string;
@@ -36,17 +38,30 @@ function validate(body: unknown): { ok: true; mode: "single"; data: SingleDoc } 
     return { ok: true, mode: "bulk", contributor: b.contributor as string, docs: b.docs as BulkDoc[] };
   }
 
-  // Default: single mode
-  if (typeof b.title !== "string" || !b.title.trim().length ||
-      typeof b.url !== "string" || !b.url.trim().length ||
-      typeof b.type !== "string" ||
-      typeof b.contributor !== "string" ||
-      typeof b.branch !== "string" ||
-      typeof b.semester !== "number" ||
-      typeof b.subject !== "string" || !b.subject.trim().length) {
-    return { ok: false, error: "Missing or invalid fields. Required: title, url, type, contributor, branch, semester, subject." };
+  // Source defaults to jammu-university if not provided
+  const source = typeof b.source === "string" ? b.source : "jammu-university";
+
+  if (source === "jammu-university") {
+    if (typeof b.title !== "string" || !b.title.trim().length ||
+        typeof b.url !== "string" || !b.url.trim().length ||
+        typeof b.type !== "string" ||
+        typeof b.contributor !== "string" ||
+        typeof b.branch !== "string" ||
+        typeof b.semester !== "number" ||
+        typeof b.subject !== "string" || !b.subject.trim().length) {
+      return { ok: false, error: "Missing or invalid fields. Required: title, url, type, contributor, branch, semester, subject." };
+    }
+  } else {
+    // Non-JU sources only need title, url, type, contributor
+    if (typeof b.title !== "string" || !b.title.trim().length ||
+        typeof b.url !== "string" || !b.url.trim().length ||
+        typeof b.type !== "string" ||
+        typeof b.contributor !== "string") {
+      return { ok: false, error: "Missing or invalid fields. Required: title, url, type, contributor." };
+    }
   }
-  return { ok: true, mode: "single", data: b as unknown as SingleDoc };
+
+  return { ok: true, mode: "single", data: { ...(b as unknown as SingleDoc), source } };
 }
 
 // Construct the JSON array for a subject group
@@ -92,14 +107,35 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
 
     if (parsed.mode === "single") {
-      const { title, url, type, contributor, branch, semester, subject } = parsed.data;
-      const branchSlug = branch.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const subjectSlug = subject.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      const { title, url, thumbnailUrl, type, contributor, source, branch, semester, subject } = parsed.data;
       const ghUser = contributor.toLowerCase().replace(/[^a-z0-9-]/g, "") || "anonymous";
-      const branchName = `contribute/${subjectSlug}-${timestamp}`;
-      const filePath = `jammu-university/btech/${branchSlug}/semester-${semester}/${subjectSlug}/${subjectSlug}-${ghUser}.json`;
-      const jsonContent = buildJson([{ title, url, type, contributor }]);
+      const branchName = `contribute/${Date.now()}`;
+      const sourceFolder = source || "jammu-university";
+
+      // Build JSON content — include thumbnailUrl if provided
+      const today = new Date().toISOString().split("T")[0];
+      const entries: Record<string, unknown>[] = [{
+        title: title.trim(),
+        url: url.trim(),
+        type,
+        contributor: contributor.trim() || undefined,
+        uploadedAt: today,
+      }];
+      if (thumbnailUrl) entries[0].thumbnailUrl = thumbnailUrl;
+      if (source !== "jammu-university") entries[0].description = type;
+      const jsonContent = JSON.stringify(entries, null, 2);
       const base64Content = Buffer.from(jsonContent, "utf-8").toString("base64");
+
+      // Determine file path based on source
+      let filePath: string;
+      if (sourceFolder === "jammu-university") {
+        const branchSlug = branch.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const subjectSlug = subject.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+        filePath = `jammu-university/btech/${branchSlug}/semester-${semester}/${subjectSlug}/${subjectSlug}-${ghUser}.json`;
+      } else {
+        // Non-JU sources: place in source folder directly
+        filePath = `${sourceFolder}/${ghUser}.json`;
+      }
 
       // Create branch
       const br = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs`, {
@@ -124,14 +160,18 @@ export async function POST(request: NextRequest) {
 
       // Create PR
       const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://julearning.vercel.app";
+      const prBody = [`## Document`, ``, `**Title:** ${title}`, `**Type:** ${type}`, `**Contributor:** ${contributor || "anonymous"}`, `**Source:** ${sourceFolder}`];
+      if (sourceFolder === "jammu-university") {
+        prBody.push(`**Branch:** ${branch}`, `**Semester:** ${semester}`, `**Subject:** ${subject}`);
+      }
+      prBody.push(``, `**File:** \`${filePath}\``, ``, `---`, `_Created via [JU Learning](${siteUrl}/contribute)_`);
+
       const prR = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls`, {
         method: "POST", headers,
         body: JSON.stringify({
           title: `Add: ${title} (${type})`,
           head: branchName, base: "main",
-          body: [`## Document`, ``, `**Title:** ${title}`, `**Type:** ${type}`, `**Contributor:** ${contributor || "anonymous"}`,
-            `**Branch:** ${branch}`, `**Semester:** ${semester}`, `**Subject:** ${subject}`, ``, `**File:** \`${filePath}\``,
-            ``, `---`, `_Created via [JU Learning](${siteUrl}/contribute)_`].join("\n"),
+          body: prBody.join("\n"),
         }),
       });
       if (!prR.ok) {

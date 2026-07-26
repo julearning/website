@@ -7,9 +7,9 @@ export type SearchResult = {
 
 function singleWordScore(doc: {
   title: string;
-  subject: string;
+  subject: string | null;
   description?: string;
-  branch: string;
+  branch: string | null;
   type?: DocType;
   tags?: string[];
 }, word: string): number {

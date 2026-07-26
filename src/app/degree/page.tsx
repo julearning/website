@@ -54,7 +54,7 @@ export default function DegreePage() {
                 {branches.map((branch) => {
                   const name = BRANCH_NAMES[branch as Branch] || branch;
                   const docs = getDocumentsByBranch(branch);
-                  const branchSems = [...new Set(docs.map((d) => d.semester))].sort((a, b) => a - b);
+                  const branchSems = [...new Set(docs.map((d) => d.semester))].filter((s): s is number => s != null).sort((a, b) => a - b);
                   const branchSubs = [...new Set(docs.map((d) => d.subject))].sort();
 
                   return (

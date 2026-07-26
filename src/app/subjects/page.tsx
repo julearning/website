@@ -20,14 +20,16 @@ export default function SubjectsPage() {
     { docCount: number; branch: string; semester: number }
   >();
   for (const doc of juDocs) {
-    if (!subjectMap.has(doc.subject)) {
-      subjectMap.set(doc.subject, {
+    const subj = doc.subject;
+    if (!subj) continue;
+    if (!subjectMap.has(subj)) {
+      subjectMap.set(subj, {
         docCount: 0,
-        branch: doc.branch,
-        semester: doc.semester,
+        branch: doc.branch || "CSE",
+        semester: doc.semester || 1,
       });
     }
-    const entry = subjectMap.get(doc.subject)!;
+    const entry = subjectMap.get(subj)!;
     entry.docCount++;
   }
 

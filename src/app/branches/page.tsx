@@ -28,7 +28,7 @@ export default function BranchesPage() {
         {branches.map((branch) => {
           const name = BRANCH_NAMES[branch as Branch] || branch;
           const docCount = getDocumentsByBranch(branch).length;
-          const semesters = [...new Set(getDocumentsByBranch(branch).map((d) => d.semester))].sort((a, b) => a - b);
+          const semesters = [...new Set(getDocumentsByBranch(branch).map((d) => d.semester))].filter((s): s is number => s != null).sort((a, b) => a - b);
 
           return (
             <Link

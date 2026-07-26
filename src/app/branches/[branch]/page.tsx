@@ -39,7 +39,7 @@ export default async function BranchPage({ params }: { params: Promise<{ branch:
 
   const name = BRANCH_NAMES[branch] || branch;
   const docs = getDocumentsByBranch(branch);
-  const semesters = [...new Set(docs.map((d) => d.semester))].sort((a, b) => a - b);
+  const semesters = [...new Set(docs.map((d) => d.semester))].filter((s): s is number => s != null).sort((a, b) => a - b);
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-16">

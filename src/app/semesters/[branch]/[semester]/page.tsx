@@ -20,9 +20,8 @@ const BRANCH_NAMES: Record<Branch, string> = {
 
 export async function generateStaticParams() {
   const params: { branch: string; semester: string }[] = [];
-  for (const slug of Object.keys(BRANCH_MAP)) {
-    const branch = BRANCH_MAP[slug];
-    const semesters = [...new Set(getDocumentsByBranch(branch).map((d) => d.semester))];
+  for (const [slug, branch] of Object.entries(BRANCH_MAP)) {
+    const semesters = [...new Set(getDocumentsByBranch(branch).map((d) => d.semester))].filter((s): s is number => s != null);
     for (const sem of semesters) {
       params.push({ branch: slug, semester: String(sem) });
     }
@@ -50,9 +49,10 @@ export default async function SemesterPage({ params }: { params: Promise<{ branc
 
   const subjectMap = new Map<string, typeof branchDocs>();
   for (const doc of branchDocs) {
-    const existing = subjectMap.get(doc.subject) || [];
+    const subj = doc.subject || "Uncategorized";
+    const existing = subjectMap.get(subj) || [];
     existing.push(doc);
-    subjectMap.set(doc.subject, existing);
+    subjectMap.set(subj, existing);
   }
   const subjects = [...subjectMap.entries()].sort(([a], [b]) => a.localeCompare(b));
 

@@ -5,10 +5,10 @@ export interface Document {
   thumbnailUrl: string;
   fileType: "pdf" | "docx";
   fileSize: number;
-  /** Folder-derived hierarchy */
-  branch: Branch;
-  semester: number;
-  subject: string;
+  /** Folder-derived hierarchy — only for jammu-university documents */
+  branch: Branch | null;
+  semester: number | null;
+  subject: string | null;
   /** Single document type — handwritten, digital, pyq (optional: backward compat) */
   type?: DocType;
   /** Backward-compat: old data has tags[] instead of type */

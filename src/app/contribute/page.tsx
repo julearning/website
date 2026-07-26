@@ -23,11 +23,15 @@ const TYPES: Array<{ id: DocType | string; label: string }> = [
   { id: "mixed", label: "Mixed / Other" },
 ];
 
+/* Available sources from the data */
+const AVAILABLE_SOURCES = [
+  { id: "jammu-university", label: "Jammu University" },
+  { id: "wikibooks", label: "Wikibooks" },
+];
+
 /* ------------------------------------------------------------------ */
 /*  JU document helpers                                               */
-/* ------------------------------------------------------------------ */
-
-const juDocs = documents.filter((d) => d.source === "jammu-university");
+/* ------------------------------------------------------------------ */const juDocs = documents.filter((d) => d.source === "jammu-university");
 
 function getBranches() { return [...new Set(juDocs.map(d => d.branch).filter(Boolean))].sort() as string[]; }
 function getSemesters(branch: string) {
@@ -120,10 +124,12 @@ export default function ContributePage() {
   const [mode, setMode] = useState<"single" | "bulk">("single");
 
   /* ---------- Single mode state ---------- */
+  const [source, setSource] = useState<string>("jammu-university");
   const [branch, setBranch] = useState(""); const [customBranch, setCustomBranch] = useState("");
   const [semester, setSemester] = useState<number | "">(""); const [customSemester, setCustomSemester] = useState("");
   const [subject, setSubject] = useState(""); const [customSubject, setCustomSubject] = useState("");
   const [title, setTitle] = useState(""); const [url, setUrl] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [docType, setDocType] = useState("mixed"); const [contributor, setContributor] = useState("");
   const [bmode, setBmode] = useState<"dropdown"|"custom">("dropdown");
   const [semode, setSemode] = useState<"dropdown"|"custom">("dropdown");
@@ -157,6 +163,7 @@ export default function ContributePage() {
   const resolvedBranch = bmode === "custom" ? customBranch.trim() : branch;
   const resolvedSemester = semode === "custom" ? (customSemester ? Number(customSemester) : null) : (semester || null);
   const resolvedSubject = submode === "custom" ? customSubject.trim() : subject;
+
 
   /* ---------- Bulk mode computed ---------- */
   const parsedFiles = useMemo(() => {
@@ -192,7 +199,8 @@ export default function ContributePage() {
   }
 
   /* ---------- Single: submit ---------- */
-  const singleValid = title.trim() && url.trim() && urlStatus !== "invalid" && resolvedBranch && resolvedSemester && resolvedSubject && ghStatus !== "invalid";
+  const juValid = source === "jammu-university" ? (resolvedBranch && resolvedSemester && resolvedSubject) : true;
+  const singleValid = title.trim() && url.trim() && urlStatus !== "invalid" && juValid && ghStatus !== "invalid";
 
   async function handleSingleSubmit(e: React.FormEvent) {
     e.preventDefault(); if (!singleValid) return;
@@ -200,7 +208,18 @@ export default function ContributePage() {
     try {
       const res = await fetch("/api/contribute", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode:"single", title: title.trim(), url: url.trim(), type: docType, contributor: contributor.trim() || "anonymous", branch: resolvedBranch, semester: Number(resolvedSemester), subject: resolvedSubject }),
+        body: JSON.stringify({
+          mode: "single",
+          source,
+          title: title.trim(),
+          url: url.trim(),
+          thumbnailUrl: thumbnailUrl.trim() || undefined,
+          type: docType,
+          contributor: contributor.trim() || "anonymous",
+          branch: resolvedBranch,
+          semester: Number(resolvedSemester),
+          subject: resolvedSubject,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setStatus("error"); setErrorMsg(data.error || "Something went wrong."); return; }
@@ -239,7 +258,8 @@ export default function ContributePage() {
   function resetSingle() {
     if (urlTimer.current) clearTimeout(urlTimer.current); if (ghTimer.current) clearTimeout(ghTimer.current);
     setStatus("idle"); setPrUrl(""); setErrorMsg("");
-    setTitle(""); setUrl(""); setUrlStatus("idle"); setUrlMsg(""); setDocType("mixed");
+    setSource("jammu-university");
+    setTitle(""); setUrl(""); setThumbnailUrl(""); setUrlStatus("idle"); setUrlMsg(""); setDocType("mixed");
     setContributor(""); setGhStatus("idle"); setGhMsg("");
     setBranch(""); setCustomBranch(""); setBmode("dropdown");
     setSemester(""); setCustomSemester(""); setSemode("dropdown");
@@ -253,9 +273,14 @@ export default function ContributePage() {
 
   /* ---------- Single preview ---------- */
   const previewJson = useMemo(() => {
-    if (!title.trim() || !url.trim() || !resolvedBranch || !resolvedSemester || !resolvedSubject) return null;
-    return JSON.stringify([{ title: title.trim(), url: url.trim(), type: docType, contributor: contributor.trim() || undefined, uploadedAt: new Date().toISOString().split("T")[0] }], null, 2);
-  }, [title, url, docType, contributor, resolvedBranch, resolvedSemester, resolvedSubject]);
+    if (!title.trim() || !url.trim()) return null;
+    if (source === "jammu-university" && (!resolvedBranch || !resolvedSemester || !resolvedSubject)) return null;
+    const entry: Record<string, unknown> = { title: title.trim(), url: url.trim(), type: docType };
+    if (thumbnailUrl.trim()) entry.thumbnailUrl = thumbnailUrl.trim();
+    if (source !== "jammu-university") entry.description = docType;
+    entry.uploadedAt = new Date().toISOString().split("T")[0];
+    return JSON.stringify([entry], null, 2);
+  }, [title, url, thumbnailUrl, docType, source, resolvedBranch, resolvedSemester, resolvedSubject]);
 
   /* ---------- Render ---------- */
   return (
@@ -278,7 +303,29 @@ export default function ContributePage() {
       {/* ============================================================ */}
       {mode === "single" && status !== "success" && (
         <form onSubmit={handleSingleSubmit} className="mt-10 space-y-8">
-          {/* Branch → Semester → Subject */}
+          {/* Source selector */}
+          <div className="mb-6">
+            <p className="mb-4 text-sm font-semibold text-foreground">Source</p>
+            <div className="flex gap-0">
+              {AVAILABLE_SOURCES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSource(s.id)}
+                  className={`px-6 py-3 text-sm font-bold transition-all ${
+                    source === s.id
+                      ? "bg-brand text-white"
+                      : "bg-surface text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Branch → Semester → Subject (only for jammu-university) */}
+          {source === "jammu-university" && (
           <div>
             <p className="mb-4 text-sm font-semibold text-foreground">Where does this document belong?</p>
             <div className="grid grid-cols-3 gap-4">
@@ -311,6 +358,7 @@ export default function ContributePage() {
               ))}
             </div>
           </div>
+          )}
 
           {/* Document details */}
           <div>
@@ -341,6 +389,15 @@ export default function ContributePage() {
                     {TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
                 </div>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Thumbnail URL (optional)</label>
+                  <input type="url" value={thumbnailUrl} onChange={e => setThumbnailUrl(e.target.value)}
+                    placeholder="https://drive.google.com/thumbnail?id=..."
+                    className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Your GitHub Username</label>
                   <div className="relative">
