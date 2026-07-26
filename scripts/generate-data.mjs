@@ -97,12 +97,19 @@ function scanDir(dir) {
 
 /**
  * Extract the source name from a file path relative to the clone root.
- * E.g., "jammu-university/btech/cse/semester-4/..." → "jammu-university"
+ * - "jammu-university/btech/cse/..." → "jammu-university"
+ * - "other-sources/wikibooks/..."     → "wikibooks"
+ * - "other-sources/foo/..."           → "foo"
  */
 function inferSource(filePath, cloneRoot) {
   const relative = path.relative(cloneRoot, filePath);
   const segments = relative.split(path.sep).filter(Boolean);
-  return segments[0] || "unknown";
+  if (!segments.length) return "unknown";
+  // Folders under other-sources/ use the subfolder as the source name
+  if (segments[0] === "other-sources" && segments.length > 1) {
+    return segments[1];
+  }
+  return segments[0];
 }
 
 /**

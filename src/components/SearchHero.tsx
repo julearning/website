@@ -28,34 +28,22 @@ const SOURCE_RANK: Record<string, number> = {
 function getSourceLabel(source: string): string {
   const labels: Record<string, string> = {
     "jammu-university": "Jammu University",
-    "open-textbook-library": "Open Textbook Library",
-    "openstax": "OpenStax",
-    "project-gutenberg": "Project Gutenberg",
-    "wikibooks": "Wikibooks",
   };
-  return labels[source] || source;
+  return labels[source] || source.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function getSourceTitle(source: string): string {
   const titles: Record<string, string> = {
     "jammu-university": "JU Learning",
-    "open-textbook-library": "Open Textbook Library",
-    "openstax": "OpenStax",
-    "project-gutenberg": "Project Gutenberg",
-    "wikibooks": "Wikibooks",
   };
-  return titles[source] || "JU Learning";
+  return titles[source] || getSourceLabel(source);
 }
 
 function getSourceSubtitle(source: string): string {
   const subtitles: Record<string, string> = {
     "jammu-university": "Every branch. Every semester. Every note.",
-    "open-textbook-library": "Openly licensed textbooks reviewed by faculty.",
-    "openstax": "Free peer-reviewed textbooks from Rice University.",
-    "project-gutenberg": "Classic out-of-copyright books digitized by volunteers.",
-    "wikibooks": "Open-content textbooks from the Wikimedia community.",
   };
-  return subtitles[source] || "Every branch. Every semester. Every note.";
+  return subtitles[source] || getSourceLabel(source);
 }
 
 /** Group results by source, JU first, others alphabetically */

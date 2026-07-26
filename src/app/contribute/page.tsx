@@ -23,11 +23,20 @@ const TYPES: Array<{ id: DocType | string; label: string }> = [
   { id: "mixed", label: "Mixed / Other" },
 ];
 
-/* Available sources from the data */
-const AVAILABLE_SOURCES = [
-  { id: "jammu-university", label: "Jammu University" },
-  { id: "wikibooks", label: "Wikibooks" },
-];
+/* Source label helpers — kept in one place so both contribute and SearchHero can style them */
+const SOURCE_LABELS: Record<string, string> = {
+  "jammu-university": "Jammu University",
+};
+
+function getSourceLabel(id: string): string {
+  return SOURCE_LABELS[id] || id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/* Dynamically compute available sources from the document data */
+const AVAILABLE_SOURCES = [...new Set(documents.map((d) => d.source))]
+  .filter(Boolean)
+  .sort()
+  .map((id) => ({ id, label: getSourceLabel(id) }));
 
 /* ------------------------------------------------------------------ */
 /*  JU document helpers                                               */
