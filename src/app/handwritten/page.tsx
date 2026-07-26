@@ -13,7 +13,7 @@ export default function HandwrittenPage() {
       <SearchHero
         title="Handwritten Notes"
         subtitle="Student-scanned handwritten summaries"
-        defaultTags={["handwritten"]}
+        defaultType="handwritten"
         searchOnMount
       />
     </main>

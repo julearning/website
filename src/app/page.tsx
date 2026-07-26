@@ -11,10 +11,10 @@ import { RevealSection } from "@/components/RevealSection";
 import { ContributorCircle } from "@/components/ContributorCircle";
 
 const CATEGORY_SECTIONS = [
-  { tag: "pyq", title: "Previous Year Questions", subtitle: "Past exam papers from all semesters" },
-  { tag: "handwritten", title: "Handwritten Notes", subtitle: "Student-scanned handwritten summaries" },
-  { tag: "typed", title: "Digital Notes", subtitle: "Clean typed notes and study materials" },
-] as const;
+  { type: "pyq" as const, title: "Previous Year Questions", subtitle: "Past exam papers from all semesters" },
+  { type: "handwritten" as const, title: "Handwritten Notes", subtitle: "Student-scanned handwritten summaries" },
+  { type: "digital" as const, title: "Digital Notes", subtitle: "Clean typed notes and study materials" },
+];
 
 export default function Home() {
   // Recent documents sorted by upload date (newest first)
@@ -29,7 +29,7 @@ export default function Home() {
     return CATEGORY_SECTIONS.map((cat) => ({
       ...cat,
       docs: [...documents]
-        .filter((d) => d.tags.includes(cat.tag))
+        .filter((d) => d.type === cat.type || (d.tags && d.tags.includes(cat.type)))
         .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())
         .slice(0, 6),
     }));
@@ -186,7 +186,7 @@ export default function Home() {
         {/* Category Sections: PYQs, Handwritten, Digital Notes */}
         {categoryDocs.map((cat) =>
           cat.docs.length > 0 ? (
-            <RevealSection key={cat.tag} id={cat.tag}>
+            <RevealSection key={cat.type} id={cat.type}>
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-foreground">{cat.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{cat.subtitle}</p>

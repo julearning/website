@@ -9,12 +9,6 @@ import type { FilterState } from "@/lib/types";
 import { ResultCard } from "@/components/ResultCard";
 import { PaginatedGrid } from "@/components/PaginatedGrid";
 
-const SECTION_LABELS: Record<string, string> = {
-  "section-a": "Section A",
-  "section-b": "Section B",
-  mixed: "Mixed",
-};
-
 interface Props {
   docs: JLDoc[];
   subject: string;
@@ -22,27 +16,17 @@ interface Props {
 
 export function DocumentBrowser({ docs, subject }: Props) {
   const [query, setQuery] = useState("");
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-
-  const sections = useMemo(() => {
-    const secs = [...new Set(docs.map((d) => d.section))].filter(Boolean) as string[];
-    return secs;
-  }, [docs]);
-
   const filtered = useMemo(() => {
     let filtered = docs;
-    if (activeSection) {
-      filtered = filtered.filter((d) => d.section === activeSection);
-    }
     if (query.trim()) {
       const filters: FilterState = {
         query, branch: null, semester: null, subject: null,
-        tags: [], sources: [], sort: "relevance",
+        types: [], sources: [], sort: "relevance",
       };
       filtered = searchDocuments(filtered, filters).map((r) => r.doc);
     }
     return filtered;
-  }, [docs, query, activeSection]);
+  }, [docs, query]);
 
   return (
     <>
@@ -60,25 +44,7 @@ export function DocumentBrowser({ docs, subject }: Props) {
         </div>
       </div>
 
-      {sections.length > 1 && (
-        <div className="mb-6 flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setActiveSection(null)}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${activeSection === null ? "bg-foreground text-background" : "bg-accent text-muted-foreground hover:text-foreground"}`}
-          >
-            All ({docs.length})
-          </button>
-          {sections.map((sec) => (
-            <button
-              key={sec}
-              onClick={() => setActiveSection(sec)}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${activeSection === sec ? "bg-foreground text-background" : "bg-accent text-muted-foreground hover:text-foreground"}`}
-            >
-              {SECTION_LABELS[sec] || sec} ({docs.filter((d) => d.section === sec).length})
-            </button>
-          ))}
-        </div>
-      )}
+
 
       <p className="mb-4 text-sm text-muted-foreground">{filtered.length} result{filtered.length !== 1 ? "s" : ""}{query && ` for "${query}"`}</p>
       <PaginatedGrid

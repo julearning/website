@@ -13,7 +13,7 @@ export default function DigitalNotesPage() {
       <SearchHero
         title="Digital Notes"
         subtitle="Clean typed notes and study materials"
-        defaultTags={["typed"]}
+        defaultType="digital"
         searchOnMount
       />
     </main>

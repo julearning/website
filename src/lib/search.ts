@@ -1,4 +1,4 @@
-import type { Document, FilterState } from "./types";
+import type { Document, FilterState, DocType } from "./types";
 
 export type SearchResult = {
   doc: Document;
@@ -8,17 +8,16 @@ export type SearchResult = {
 function singleWordScore(doc: {
   title: string;
   subject: string;
-  description: string;
+  description?: string;
   branch: string;
-  chapters: string[];
-  tags: string[];
+  type?: DocType;
+  tags?: string[];
 }, word: string): number {
   const title = doc.title.toLowerCase();
   const subject = doc.subject.toLowerCase();
   const description = (doc.description || "").toLowerCase();
   const branch = doc.branch.toLowerCase();
-  const chapters = doc.chapters.join(" ").toLowerCase();
-  const tags = doc.tags.join(" ").toLowerCase();
+  const docType = doc.type || doc.tags?.[0] || "";
 
   // Exact title match
   if (title === word) return 0;
@@ -30,15 +29,12 @@ function singleWordScore(doc: {
   if (subject.startsWith(word)) return 0.2;
   if (subject.includes(word)) return 0.3;
 
-  // Description / chapters match
+  // Description / type match
   if (description.includes(word)) return 0.35;
-  if (chapters.includes(word)) return 0.4;
+  if (docType.includes(word)) return 0.4;
 
   // Branch match
   if (branch.includes(word)) return 0.5;
-
-  // Tags match
-  if (tags.includes(word)) return 0.55;
 
   // Word-level partial match in title
   const titleWords = title.split(/\s+/);
@@ -74,7 +70,7 @@ export function searchDocuments(
   docs: Document[],
   filters: FilterState,
 ): SearchResult[] {
-  const { query, branch, semester, subject, tags, sources, sort } = filters;
+  const { query, branch, semester, subject, types, sources, sort } = filters;
 
   // Apply filters first
   let filtered = [...docs];
@@ -86,8 +82,8 @@ export function searchDocuments(
       (d) => d.subject.toLowerCase() === subject.toLowerCase(),
     );
   }
-  if (tags.length > 0) {
-    filtered = filtered.filter((d) => tags.every((t) => d.tags.includes(t)));
+  if (types.length > 0) {
+    filtered = filtered.filter((d) => types.includes(d.type as DocType) || (d.tags && d.tags.some((t) => types.includes(t as DocType))));
   }
   if (sources.length > 0) {
     filtered = filtered.filter((d) => sources.includes(d.source));

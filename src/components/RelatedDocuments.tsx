@@ -2,25 +2,13 @@
 
 import { useState } from "react";
 import type { Document as JLDoc } from "@/lib/types";
-import { formatFileSize, getThumbnailUrl } from "@/lib/types";
-
-const TAG_LABELS: Record<string, string> = {
-  notes: "Notes",
-  pyq: "PYQ",
-  assignment: "Assignment",
-  "lab-manual": "Lab Manual",
-  syllabus: "Syllabus",
-  handwritten: "Handwritten",
-  typed: "Typed",
-  "reference-book": "Ref Book",
-  "project-report": "Project",
-};
+import { formatFileSize, getThumbnailUrl, TYPE_LABELS } from "@/lib/types";
 
 function RelatedCard({ doc }: { doc: JLDoc }) {
   const [imgFailed, setImgFailed] = useState(false);
   const thumbUrl = getThumbnailUrl(doc.url);
   const showThumb = thumbUrl && !imgFailed;
-  const displayTags = doc.tags.slice(0, 2);
+  const docType = doc.type || (doc.tags && doc.tags[0]) || "";
 
   return (
     <a
@@ -49,17 +37,12 @@ function RelatedCard({ doc }: { doc: JLDoc }) {
             </span>
           </div>
         )}
-        {/* Tag badge */}
-        {displayTags.length > 0 && (
-          <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-            {displayTags.map((tag) => (
-              <span
-                key={tag}
-                className="bg-surface/95 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white"
-              >
-                {TAG_LABELS[tag] || tag}
-              </span>
-            ))}
+        {/* Type badge */}
+        {docType && (
+          <div className="absolute left-3 top-3">
+            <span className="bg-surface/95 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white">
+              {TYPE_LABELS[docType] || docType}
+            </span>
           </div>
         )}
       </div>

@@ -1,55 +1,54 @@
 export interface Document {
   id: string;
   title: string;
-  description: string;
   url: string;
   thumbnailUrl: string;
   fileType: "pdf" | "docx";
   fileSize: number;
+  /** Folder-derived hierarchy */
   branch: Branch;
   semester: number;
   subject: string;
-  section?: "section-a" | "section-b" | "mixed";
-  tags: string[];
-  chapters: string[];
+  /** Single document type — handwritten, digital, pyq (optional: backward compat) */
+  type?: DocType;
+  /** Backward-compat: old data has tags[] instead of type */
+  tags?: string[];
   contributor?: string;
   uploadedAt?: string;
+  description?: string;
+  /** Source identifier: "jammu-university", "open-textbook-library", etc. */
+  source: string;
+  /** Old fields kept optional for data compatibility */
+  section?: string;
+  chapters?: string[];
   language?: string;
   pages?: number;
   downloads?: number;
-  source: string;
+  /** Folder path within the source, e.g. "btech/cse/semester-4" */
+  sourcePath?: string;
 }
 
 export type Branch = "CSE" | "ECE" | "EE" | "ME" | "CE";
+
+export type DocType = "handwritten" | "digital" | "pyq" | "assignment" | "lab-manual" | "syllabus" | "reference-book" | "project-report" | "mixed" | "other";
 
 export type SubjectMetadata = {
   subject: string;
   branch: string;
   semester: number;
-  sections: {
-    "section-a": SectionData;
-    "section-b": SectionData;
-    mixed: { documents: RawDocument[] };
-  };
-};
-
-export type SectionData = {
-  chapters: string[];
   documents: RawDocument[];
 };
 
 export type RawDocument = {
   title: string;
   url: string;
-  tags: string[];
-  fileSize: number;
+  type?: DocType;
+  tags?: string[];
+  fileSize?: number;
   description?: string;
   fileType?: string;
   uploadedAt?: string;
   contributor?: string;
-  language?: string;
-  pages?: number;
-  downloads?: number;
 };
 
 export type FilterState = {
@@ -57,7 +56,7 @@ export type FilterState = {
   branch: Branch | null;
   semester: number | null;
   subject: string | null;
-  tags: string[];
+  types: DocType[];
   sources: string[];
   sort: "relevance" | "newest" | "oldest" | "name" | "size";
 };
@@ -84,3 +83,20 @@ export function getPreviewUrl(url: string): string {
   if (!fileId) return url;
   return `https://drive.google.com/file/d/${fileId}/preview`;
 }
+
+export const TYPE_LABELS: Record<string, string> = {
+  handwritten: "Handwritten",
+  digital: "Digital Notes",
+  pyq: "PYQ",
+  assignment: "Assignment",
+  "lab-manual": "Lab Manual",
+  syllabus: "Syllabus",
+  "reference-book": "Ref Book",
+  "project-report": "Project",
+  mixed: "Mixed",
+  other: "Other",
+  notes: "Notes",
+  typed: "Typed",
+  "past-year": "Past Year",
+  pyqs: "PYQs",
+};

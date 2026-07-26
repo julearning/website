@@ -3,28 +3,67 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { documents } from "@/data/documents";
 import { searchDocuments, type SearchResult } from "@/lib/search";
-import type { FilterState } from "@/lib/types";
+import type { FilterState, DocType } from "@/lib/types";
+import { TYPE_LABELS } from "@/lib/types";
 import { ResultCard } from "@/components/ResultCard";
 import { PaginatedGrid } from "@/components/PaginatedGrid";
 import { SortDropdown, type SortOption } from "@/components/SortDropdown";
-import { FilterDropdown } from "@/components/FilterDropdown";
+import { TypeFilter } from "@/components/TypeFilter";
 import { SourceDropdown, type SourceOption } from "@/components/SourceDropdown";
 
 interface SearchHeroProps {
   title?: string;
   subtitle?: string;
-  defaultTags?: string[];
+  defaultType?: DocType;
   searchOnMount?: boolean;
 }
 
-export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Every semester. Every note.", defaultTags, searchOnMount }: SearchHeroProps) {
+/** Source display order: "jammu-university" always first, rest alphabetically */
+const SOURCE_RANK: Record<string, number> = {
+  "jammu-university": 0,
+};
+
+function getSourceLabel(source: string): string {
+  const labels: Record<string, string> = {
+    "jammu-university": "Jammu University",
+    "open-textbook-library": "Open Textbook Library",
+    "openstax": "OpenStax",
+    "project-gutenberg": "Project Gutenberg",
+    "wikibooks": "Wikibooks",
+  };
+  return labels[source] || source;
+}
+
+/** Group results by source, JU first, others alphabetically */
+function groupBySource(results: SearchResult[]): Array<{ source: string; label: string; docs: SearchResult[] }> {
+  const groups = new Map<string, SearchResult[]>();
+  for (const r of results) {
+    const s = r.doc.source || "other";
+    if (!groups.has(s)) groups.set(s, []);
+    groups.get(s)!.push(r);
+  }
+  const sorted = Array.from(groups.entries()).map(([source, docs]) => ({
+    source,
+    label: getSourceLabel(source),
+    docs,
+  }));
+  sorted.sort((a, b) => {
+    const ra = SOURCE_RANK[a.source] ?? 1;
+    const rb = SOURCE_RANK[b.source] ?? 1;
+    if (ra !== rb) return ra - rb;
+    return a.label.localeCompare(b.label);
+  });
+  return sorted;
+}
+
+export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Every semester. Every note.", defaultType, searchOnMount }: SearchHeroProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [sort, setSort] = useState<SortOption>("relevance");
-  const [activeTags, setActiveTags] = useState<string[]>(defaultTags ?? []);
+  const [activeType, setActiveType] = useState<DocType | null>(defaultType ?? null);
   const [activeSources, setActiveSources] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,15 +71,19 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
   // Compute available sources from documents
   const availableSources: SourceOption[] = useMemo(() => {
     const sourceSet = new Set(documents.map((d) => d.source));
-    return Array.from(sourceSet).sort().map((id) => ({
+    return Array.from(sourceSet).sort((a, b) => {
+      const ra = SOURCE_RANK[a] ?? 1;
+      const rb = SOURCE_RANK[b] ?? 1;
+      if (ra !== rb) return ra - rb;
+      return a.localeCompare(b);
+    }).map((id) => ({
       id,
-      label: id === "jammu-university" ? "Jammu University" : id,
+      label: getSourceLabel(id),
     }));
   }, []);
 
-  async function performSearch(q: string, sortOverride?: SortOption, tagsOverride?: string[], sourcesOverride?: string[]) {
-    // Allow empty query when tags or sources are active (shows all docs matching filters)
-    if (!q.trim() && (tagsOverride ?? activeTags).length === 0 && (sourcesOverride ?? activeSources).length === 0) {
+  async function performSearch(q: string, sortOverride?: SortOption, typeOverride?: DocType | null, sourcesOverride?: string[]) {
+    if (!q.trim() && !(typeOverride ?? activeType) && (sourcesOverride ?? activeSources).length === 0) {
       setResults([]);
       setHasSearched(false);
       return;
@@ -48,11 +91,10 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     setIsLoading(true);
     setHasSearched(true);
 
-    // Yield to React so the loading skeleton renders before results
     await new Promise((r) => setTimeout(r, 200));
 
     const currentSort = sortOverride ?? sort;
-    const currentTags = tagsOverride ?? activeTags;
+    const currentType = typeOverride ?? activeType;
     const currentSources = sourcesOverride ?? activeSources;
 
     const filters: FilterState = {
@@ -60,7 +102,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
       branch: null,
       semester: null,
       subject: null,
-      tags: currentTags,
+      types: currentType ? [currentType] : [],
       sources: currentSources,
       sort: currentSort,
     };
@@ -69,7 +111,6 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     setIsLoading(false);
   }
 
-  // Debounced auto-search: triggers 1s after the user stops typing
   const debouncedSearch = (q: string) => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -84,19 +125,17 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     }, 1000);
   };
 
-  // Search autocomplete: match titles/subjects that start with the typed query
+  // Search autocomplete
   const suggestion = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q || q.length < 1) return "";
 
-    // Try to match a document title first
     for (const doc of documents) {
       const lower = doc.title.toLowerCase();
       if (lower.startsWith(q) && lower.length > q.length) {
         return doc.title.slice(query.trim().length);
       }
     }
-    // Then try subjects
     for (const doc of documents) {
       const lower = doc.subject.toLowerCase();
       if (lower.startsWith(q) && lower.length > q.length) {
@@ -106,15 +145,13 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     return "";
   }, [query]);
 
-  // Trigger initial search on mount if searchOnMount is true
   useEffect(() => {
-    if (searchOnMount && defaultTags && defaultTags.length > 0) {
+    if (searchOnMount && defaultType) {
       performSearch("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -129,7 +166,6 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Tab" && suggestion) {
-      // Fill in the suggestion on Tab
       e.preventDefault();
       setQuery(query.trim() + suggestion);
       return;
@@ -147,33 +183,38 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     setResults([]);
     setHasSearched(false);
     setSort("relevance");
-    setActiveTags(defaultTags ?? []);
+    setActiveType(defaultType ?? null);
     setActiveSources([]);
     inputRef.current?.focus();
   }
 
   function handleSortChange(newSort: SortOption) {
     setSort(newSort);
-    if (hasSearched && (query.trim() || activeTags.length > 0 || activeSources.length > 0)) {
+    if (hasSearched && (query.trim() || activeType || activeSources.length > 0)) {
       performSearch(query, newSort);
     }
   }
 
-  function handleTagsChange(newTags: string[]) {
-    setActiveTags(newTags);
-    // Always search when tags change — shows docs matching tags even without a query
-    performSearch(query, undefined, newTags);
+  function handleTypeChange(newType: DocType | null) {
+    setActiveType(newType);
+    performSearch(query, undefined, newType);
   }
 
   function handleSourcesChange(newSources: string[]) {
     setActiveSources(newSources);
-    // Always search when sources change — shows docs from selected sources even without a query
     performSearch(query, undefined, undefined, newSources);
   }
 
+  // Group results by source
+  const grouped = useMemo(() => {
+    if (results.length === 0) return [];
+    return groupBySource(results);
+  }, [results]);
+
+  const showSourceHeadings = activeSources.length <= 1 && availableSources.length > 1;
+
   return (
     <>
-      {/* Hero — truly centered in remaining viewport space after navbar */}
       <div className="flex min-h-[calc(100dvh-60px)] flex-col items-center justify-center text-center">
         <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-7xl lg:text-8xl">
           {title}
@@ -182,7 +223,6 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
           {subtitle}
         </p>
 
-        {/* Search — bigger, no curves */}
         <div className="relative mt-12 w-full max-w-2xl">
           <div className="flex items-center bg-surface ring-1 ring-border/30 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand/20">
             <div className="relative flex-1">
@@ -200,7 +240,6 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
                 spellCheck={false}
                 style={{ background: "transparent" }}
               />
-              {/* Ghost suggestion text */}
               {suggestion && isFocused && (
                 <span
                   className="pointer-events-none absolute left-8 top-0 flex h-full items-center text-xl sm:text-2xl text-muted-foreground/20"
@@ -216,11 +255,6 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
                 Press Enter or wait
               </span>
             )}
-            {isFocused && query.trim() && suggestion && (
-              <span className="mr-6 hidden text-xs text-muted-foreground/40 sm:inline">
-                Tab to complete
-              </span>
-            )}
             {query && (
               <button
                 onClick={handleClear}
@@ -231,10 +265,10 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
             )}
           </div>
 
-          {/* Sort, Filter, Source — right under the search bar, tight gap */}
+          {/* Sort, Type filter, Source — under the search bar */}
           <div className="flex items-center justify-end gap-1 pt-2">
             <SortDropdown value={sort} onChange={handleSortChange} />
-            <FilterDropdown activeTags={activeTags} onChange={handleTagsChange} />
+            <TypeFilter activeType={activeType} onChange={handleTypeChange} />
             {availableSources.length > 1 && (
               <SourceDropdown
                 availableSources={availableSources}
@@ -252,7 +286,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
           {!isLoading && (
             <p className="mb-4 text-sm text-muted-foreground">
               {results.length} result{results.length !== 1 ? "s" : ""}
-                           {isFocused && query.trim() && !isLoading && <span className="ml-2 text-muted-foreground/40">· auto-searching in 1s</span>}
+              {isFocused && query.trim() && !isLoading && <span className="ml-2 text-muted-foreground/40">· auto-searching in 1s</span>}
             </p>
           )}
 
@@ -268,13 +302,39 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
                 </div>
               ))}
             </div>
-          ) : (
+          ) : results.length === 0 ? (
+            <div className="flex flex-col items-center py-20 text-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 h-12 w-12 text-muted-foreground/20">
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /><path d="M8 11h6" /><path d="M11 8v6" />
+              </svg>
+              <p className="text-base font-medium text-muted-foreground">No results found.</p>
+              <p className="mt-2 text-sm text-muted-foreground/50">Try broadening your search or removing some filters.</p>
+            </div>
+          ) : grouped.length === 1 ? (
+            /* Single source: show flat results */
             <PaginatedGrid
-              items={results}
+              items={grouped[0].docs}
               renderItem={(result) => <ResultCard key={result.doc.id} result={result} />}
               itemsPerPage={9}
-              emptyMessage="No results found. Try adjusting your filters or search term."
             />
+          ) : (
+            /* Multiple sources: show grouped with source headings */
+            <div className="space-y-12">
+              {grouped.map((group) => (
+                <section key={group.source}>
+                  {showSourceHeadings && (
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground/60">
+                      {group.label}
+                    </h2>
+                  )}
+                  <PaginatedGrid
+                    items={group.docs}
+                    renderItem={(result) => <ResultCard key={result.doc.id} result={result} />}
+                    itemsPerPage={9}
+                  />
+                </section>
+              ))}
+            </div>
           )}
         </div>
       )}

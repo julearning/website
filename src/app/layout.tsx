@@ -35,24 +35,8 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geist.variable} ${plusJakartaSans.variable}`}
-      suppressHydrationWarning
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var theme = localStorage.getItem('theme');
-                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    document.documentElement.classList.add('dark');
-                  }
-                } catch(e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
+      <head></head>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <div className="flex min-h-screen flex-col">
           <Navbar />

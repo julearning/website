@@ -13,7 +13,7 @@ export default function PYQPage() {
       <SearchHero
         title="Previous Year Questions"
         subtitle="Past exam papers from all semesters"
-        defaultTags={["pyq"]}
+        defaultType="pyq"
         searchOnMount
       />
     </main>

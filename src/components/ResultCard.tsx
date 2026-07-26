@@ -2,20 +2,8 @@
 
 import { useState } from "react";
 import type { SearchResult } from "@/lib/search";
-import { formatFileSize, getThumbnailUrl } from "@/lib/types";
+import { formatFileSize, getThumbnailUrl, TYPE_LABELS } from "@/lib/types";
 import { getReportUrl } from "@/lib/report";
-
-const TAG_LABELS: Record<string, string> = {
-  notes: "Notes",
-  pyq: "PYQ",
-  assignment: "Assignment",
-  "lab-manual": "Lab Manual",
-  syllabus: "Syllabus",
-  handwritten: "Handwritten",
-  typed: "Typed",
-  "reference-book": "Ref Book",
-  "project-report": "Project",
-};
 
 export function ResultCard({ result }: { result: SearchResult }) {
   const [imgFailed, setImgFailed] = useState(false);
@@ -23,7 +11,7 @@ export function ResultCard({ result }: { result: SearchResult }) {
   const showThumb = thumbUrl && !imgFailed;
   const { doc } = result;
 
-  const displayTags = doc.tags.slice(0, 2);
+  const docType = doc.type || (doc.tags && doc.tags[0]) || "";
 
   return (
     <div className="group block break-inside-avoid bg-surface transition-all duration-300 hover:bg-brand mb-5">
@@ -54,16 +42,11 @@ export function ResultCard({ result }: { result: SearchResult }) {
             </div>
           )}
           {/* Type badge */}
-          {displayTags.length > 0 && (
-            <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-              {displayTags.map((tag) => (
-                <span
-                  key={tag}
-                  className="bg-surface/95 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white"
-                >
-                  {TAG_LABELS[tag] || tag}
-                </span>
-              ))}
+          {docType && (
+            <div className="absolute left-3 top-3">
+              <span className="bg-surface/95 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white">
+                {TYPE_LABELS[docType] || docType}
+              </span>
             </div>
           )}
         </div>
