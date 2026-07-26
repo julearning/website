@@ -5,6 +5,7 @@ import Link from "next/link";
 import { documents, getUniqueBranches, getDocumentsByBranch } from "@/data/documents";
 import type { Branch, Document } from "@/lib/types";
 import { getThumbnailUrl } from "@/lib/types";
+import { getReportUrl } from "@/lib/report";
 import { SearchHero } from "@/components/SearchHero";
 
 const CATEGORY_SECTIONS = [
@@ -100,41 +101,53 @@ export default function Home() {
     const showThumb = thumb && !imgFailed;
 
     return (
-      <a
-        href={doc.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group block break-inside-avoid bg-white transition-all duration-300 hover:bg-brand mb-5"
-      >
-        <div className="relative overflow-hidden bg-accent">
-          {showThumb ? (
-            <img
-              src={thumb}
-              alt={doc.title}
-              className="w-full transition-transform duration-500 group-hover:scale-105"
-              loading="lazy"
-              onError={() => setImgFailed(true)}
-            />
-          ) : (
-            <div className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
-              <span className="text-3xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
-                {doc.title.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="p-4 transition-colors duration-300">
-          <p className="text-sm font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-white">
-            {doc.title}
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70">
-            {doc.branch} S{doc.semester} · {doc.subject}
-          </p>
-          <p className="mt-1 text-[11px] text-muted-foreground/40 transition-colors duration-300 group-hover:text-white/50">
-            {formatDate(doc.uploadedAt)}
-          </p>
+      <div className="group block break-inside-avoid bg-white transition-all duration-300 hover:bg-brand mb-5">
+        <a
+          href={doc.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block overflow-hidden"
+        >
+          <div className="relative overflow-hidden bg-accent">
+            {showThumb ? (
+              <img
+                src={thumb}
+                alt={doc.title}
+                className="w-full transition-transform duration-500 group-hover:scale-105"
+                loading="lazy"
+                onError={() => setImgFailed(true)}
+              />
+            ) : (
+              <div className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
+                <span className="text-3xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
+                  {doc.title.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="p-4 transition-colors duration-300">
+            <p className="text-sm font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-white">
+              {doc.title}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70">
+              {doc.branch} S{doc.semester} · {doc.subject}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground/40 transition-colors duration-300 group-hover:text-white/50">
+              {formatDate(doc.uploadedAt)}
+            </p>
+          </div>
+        </a>
+
+        {/* Footer: contributor + report */}
+        <div className="border-t border-border/30 transition-colors duration-300 group-hover:border-white/20">
           {doc.contributor && (
-            <div className="mt-2 flex items-center gap-1.5">
+            <a
+              href={`https://github.com/${doc.contributor}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1.5 px-4 py-2 transition-colors duration-300 hover:opacity-80"
+            >
               <img
                 src={`https://github.com/${doc.contributor}.png?size=20`}
                 alt={doc.contributor}
@@ -144,10 +157,19 @@ export default function Home() {
               <span className="text-[10px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/60">
                 {doc.contributor}
               </span>
-            </div>
+            </a>
           )}
+          <a
+            href={getReportUrl(doc)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="block px-4 py-1.5 text-[10px] text-muted-foreground/40 opacity-0 transition-all duration-300 hover:text-foreground group-hover:opacity-100 group-hover:text-white/60"
+          >
+            Report broken link
+          </a>
         </div>
-      </a>
+      </div>
     );
   }
 
