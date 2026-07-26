@@ -1,35 +1,29 @@
 /**
  * Build-time data generator.
  *
- * Clones julearning/metadata from GitHub, reads ALL JSON files (both atomic
- * document-level files and legacy subject-level files), flattens into
- * individual Document entries, and generates src/data/generated-documents.ts.
+ * Clones julearning/metadata from GitHub, reads ALL JSON files in all
+ * supported formats, flattens into individual Document entries, and
+ * generates src/data/generated-documents.ts.
  *
- * Two formats are supported:
+ * Three formats are supported:
  *
- * 1. ATOMIC (preferred) — one file per document:
- *    {
+ * 1. SIMPLIFIED (preferred) — array per subject file:
+ *    [{
  *      "title": "...",
  *      "url": "https://drive.google.com/file/d/.../view",
- *      "tags": ["notes", "handwritten"],
- *      "subject": "DBMS",
- *      "branch": "CSE",
- *      "semester": 4,
- *      "section": "section-a",
- *      "chapters": ["Chapter 1", "Chapter 2"],
- *      "fileSize": 2048576,
- *      "contributor": "aryanbatra",
- *      "uploadedAt": "2026-07-25",
- *      ...
- *    }
+ *      "type": "handwritten",
+ *      "contributor": "aryanbatras",
+ *      "uploadedAt": "2026-07-26"
+ *    }]
+ *    → branch/semester/subject inferred from folder path
+ *    → tags derived from type field
  *
- * 2. LEGACY subject-level — one file per subject with sections array:
- *    {
- *      "subject": "DBMS",
- *      "branch": "CSE",
- *      "semester": 4,
- *      "sections": { "section-a": { chapters: [], documents: [...] }, ... }
- *    }
+ * 2. ATOMIC (legacy) — one file per document with all fields:
+ *    { "title": "...", "url": "...", "tags": [...], "subject": "...", "branch": "CSE", ... }
+ *
+ * 3. SUBJECT-LEVEL (legacy) — one file per subject with sections array:
+ *    { "subject": "DBMS", "branch": "CSE", "semester": 4,
+ *      "sections": { "section-a": { chapters: [], documents: [...] }, ... } }
  */
 
 import { execSync } from "child_process";
@@ -41,6 +35,14 @@ const PROJECT_ROOT = process.cwd();
 const OUTPUT_FILE = path.resolve(PROJECT_ROOT, "src/data/generated-documents.ts");
 const METADATA_REPO = "https://github.com/julearning/metadata.git";
 const CLONE_DIR = path.resolve(os.tmpdir(), "julearning-metadata-" + Date.now());
+
+const BRANCH_MAP = {
+  cse: "CSE",
+  ece: "ECE",
+  ee: "EE",
+  me: "ME",
+  ce: "CE",
+};
 
 function cloneMetadata() {
   console.log("Cloning julearning/metadata...");
@@ -73,12 +75,6 @@ function inferFileType(url) {
   return "pdf";
 }
 
-function isAtomicDoc(data) {
-  // An atomic document has a 'title' and 'url' at the top level,
-  // and does NOT have a 'sections' key.
-  return data.title && data.url && !data.sections;
-}
-
 function scanDir(dir) {
   const allFiles = [];
 
@@ -87,7 +83,6 @@ function scanDir(dir) {
     for (const entry of entries) {
       const fullPath = path.join(currentDir, entry.name);
       if (entry.isDirectory()) {
-        // Skip .git and node_modules
         if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
         scan(fullPath);
       } else if (entry.name.endsWith(".json") && !entry.name.startsWith(".")) {
@@ -102,14 +97,63 @@ function scanDir(dir) {
 
 /**
  * Extract the source name from a file path relative to the clone root.
- * Uses the first directory segment as the source.
  * E.g., "jammu-university/btech/cse/semester-4/..." → "jammu-university"
- *        "open-textbook-library/calculus/..." → "open-textbook-library"
  */
 function inferSource(filePath, cloneRoot) {
   const relative = path.relative(cloneRoot, filePath);
   const segments = relative.split(path.sep).filter(Boolean);
   return segments[0] || "unknown";
+}
+
+/**
+ * Infer branch, semester, and subject from a file path for jammu-university.
+ * Path pattern: .../jammu-university/btech/{branch}/semester-{N}/{subject-folder}/{file}.json
+ */
+function inferFromPath(filePath, cloneRoot) {
+  const relative = path.relative(cloneRoot, filePath);
+  const segments = relative.split(path.sep).filter(Boolean);
+
+  let branch = "CSE";
+  let semester = 1;
+  let subject = "Unknown";
+
+  // jammu-university path: [source, degree, branch, semester-folder, subject-folder, file]
+  if (segments.length >= 5) {
+    const branchSeg = segments[2]?.toLowerCase();
+    branch = BRANCH_MAP[branchSeg] || branchSeg?.toUpperCase() || "CSE";
+
+    const semSeg = segments[3] || "";
+    const semMatch = semSeg.match(/semester-(\d+)/i);
+    if (semMatch) semester = parseInt(semMatch[1], 10);
+
+    // Subject = second-to-last segment (the folder name)
+    const subjectSeg = segments[segments.length - 2] || "";
+    subject = subjectSeg
+      .replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  return { branch, semester, subject };
+}
+
+/** Check if data is a simplified array format: [{title, url, type, ...}] */
+function isArrayFormat(data) {
+  return Array.isArray(data) && data.length > 0 && data[0].title && data[0].url;
+}
+
+/** Check if data is a simplified single doc (minimal fields, no branch/tags directly) */
+function isSimplifiedDoc(data) {
+  return data.title && data.url && !data.branch && !data.subject && !data.tags && !data.sections;
+}
+
+/** Check if data is legacy atomic doc (has title, url, and extra fields like branch/tags) */
+function isLegacyAtomic(data) {
+  return data.title && data.url && !data.sections && (data.branch || data.tags || data.subject);
+}
+
+/** Check if data is legacy subject-level format */
+function isLegacySubject(data) {
+  return data.subject && data.branch && data.semester !== undefined && data.sections;
 }
 
 function flattenDocuments(jsonFiles, cloneRoot) {
@@ -122,11 +166,67 @@ function flattenDocuments(jsonFiles, cloneRoot) {
       const data = JSON.parse(raw);
       const source = inferSource(filePath, cloneRoot);
 
-      if (isAtomicDoc(data)) {
-        // --- ATOMIC format: one file = one document ---
-        const fileType = data.fileType || inferFileType(data.url);
+      // --- Format 1: Simplified array ---
+      if (isArrayFormat(data)) {
+        const { branch, semester, subject } = inferFromPath(filePath, cloneRoot);
+
+        for (const doc of data) {
+          if (!doc.title || !doc.url) {
+            console.warn("  Skipping doc in " + path.basename(filePath) + ": missing title or url");
+            continue;
+          }
+
+          const id = `doc-${String(idCounter).padStart(4, "0")}`;
+          idCounter++;
+          const fileType = doc.fileType || inferFileType(doc.url);
+
+          docs.push({
+            id,
+            title: doc.title,
+            description: `${subject} — ${doc.type || "mixed"}`,
+            url: doc.url,
+            thumbnailUrl: doc.thumbnailUrl || getThumbnailUrl(doc.url),
+            fileType,
+            fileSize: doc.fileSize || 0,
+            branch,
+            semester,
+            subject,
+            type: doc.type || "mixed",
+            contributor: doc.contributor || "",
+            uploadedAt: doc.uploadedAt || "",
+            source,
+          });
+        }
+      }
+      // --- Format 2: Simplified single doc ---
+      else if (isSimplifiedDoc(data)) {
+        const { branch, semester, subject } = inferFromPath(filePath, cloneRoot);
         const id = `doc-${String(idCounter).padStart(4, "0")}`;
         idCounter++;
+        const fileType = data.fileType || inferFileType(data.url);
+
+        docs.push({
+          id,
+          title: data.title,
+          description: `${subject} — ${data.type || "mixed"}`,
+          url: data.url,
+          thumbnailUrl: data.thumbnailUrl || getThumbnailUrl(data.url),
+          fileType,
+          fileSize: data.fileSize || 0,
+          branch,
+          semester,
+          subject,
+          type: data.type || "mixed",
+          contributor: data.contributor || "",
+          uploadedAt: data.uploadedAt || "",
+          source,
+        });
+      }
+      // --- Format 3: Legacy atomic doc ---
+      else if (isLegacyAtomic(data)) {
+        const id = `doc-${String(idCounter).padStart(4, "0")}`;
+        idCounter++;
+        const fileType = data.fileType || inferFileType(data.url);
 
         docs.push({
           id,
@@ -139,18 +239,15 @@ function flattenDocuments(jsonFiles, cloneRoot) {
           branch: data.branch,
           semester: data.semester,
           subject: data.subject,
-          section: data.section || "mixed",
+          type: data.type || (data.tags && data.tags[0]) || "mixed",
           tags: data.tags || [],
-          chapters: data.chapters || [],
           contributor: data.contributor || "",
-          uploadedAt: data.uploadedAt || new Date().toISOString(),
-          language: data.language || "English",
-          pages: data.pages,
-          downloads: data.downloads,
+          uploadedAt: data.uploadedAt || "",
           source,
         });
-      } else if (data.subject && data.branch && data.semester !== undefined) {
-        // --- LEGACY format: subject-level with sections ---
+      }
+      // --- Format 4: Legacy subject-level with sections ---
+      else if (isLegacySubject(data)) {
         const branch = data.branch;
         const semester = data.semester;
         const subject = data.subject;
@@ -160,15 +257,13 @@ function flattenDocuments(jsonFiles, cloneRoot) {
           if (sectionData && sectionData.documents) {
             for (const doc of sectionData.documents) {
               if (!doc.title || !doc.url) {
-                console.warn("Skipping doc in " + filePath + ": missing title or url");
+                console.warn("  Skipping doc in " + filePath + ": missing title or url");
                 continue;
               }
 
               const id = `doc-${String(idCounter).padStart(4, "0")}`;
               idCounter++;
-
               const fileType = doc.fileType || inferFileType(doc.url);
-              const chapters = sections[sectionKey]?.chapters || [];
 
               docs.push({
                 id,
@@ -181,25 +276,20 @@ function flattenDocuments(jsonFiles, cloneRoot) {
                 branch,
                 semester,
                 subject,
-                section: sectionKey,
+                type: doc.type || (doc.tags && doc.tags[0]) || "mixed",
                 tags: doc.tags || [],
-                chapters,
                 contributor: doc.contributor || "",
-                uploadedAt: doc.uploadedAt || new Date().toISOString(),
-                language: doc.language || "English",
-                pages: doc.pages,
-                downloads: doc.downloads,
+                uploadedAt: doc.uploadedAt || "",
                 source,
               });
             }
           }
         }
       } else {
-        // Skip syllabus files and other non-document JSON files
-        console.log("Skipping " + filePath + ": not a document or subject file");
+        console.log("  Skipping " + path.basename(filePath) + ": unrecognized format");
       }
     } catch (e) {
-      console.warn("Error reading " + filePath + ": " + e.message);
+      console.warn("  Error reading " + path.basename(filePath) + ": " + e.message);
     }
   }
 
@@ -208,9 +298,6 @@ function flattenDocuments(jsonFiles, cloneRoot) {
 
 function generateFile(docs) {
   const json = JSON.stringify(docs, null, 2);
-  // Use `as Document[]` type assertion (not `: Document[]` annotation)
-  // to avoid TypeScript's "union type too complex" error on large arrays.
-  // A type assertion skips the structural compatibility check.
   const lines = [
     "// Auto-generated at build time. Do not edit.",
     "// Generated by scripts/generate-data.mjs from julearning/metadata",
