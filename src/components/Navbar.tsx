@@ -3,12 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Users } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 const NAV_ITEMS: Array<{ href: string; label: string; icon?: React.ReactNode }> = [
   { href: "/contribute", label: "Contribute" },
   { href: "/sources", label: "Sources" },
-  { href: "/contributors", label: "Contributors", icon: <Users className="h-4 w-4" /> },
 ];
 
 // Note: /automation/drive was merged into /contribute and deleted

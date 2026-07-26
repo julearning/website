@@ -193,11 +193,18 @@ export default function ContributePage() {
   function handleUrlChange(val: string) {
     setUrl(val); if (urlTimer.current) clearTimeout(urlTimer.current);
     if (!val.trim()) { setUrlStatus("idle"); setUrlMsg(""); return; }
-    if (!DRIVE_PATTERN.test(val.trim())) { setUrlStatus("invalid"); setUrlMsg("Must use a Google Drive link"); return; }
-    setUrlStatus("checking"); setUrlMsg("Checking reachability...");
-    urlTimer.current = setTimeout(async () => {
-      const r = await checkDriveUrl(val); setUrlStatus(r.exists ? "valid" : "invalid"); setUrlMsg(r.message);
-    }, 500);
+    const needsDrive = !isNewSource && source === "jammu-university";
+    if (needsDrive) {
+      if (!DRIVE_PATTERN.test(val.trim())) { setUrlStatus("invalid"); setUrlMsg("Must use a Google Drive link"); return; }
+      setUrlStatus("checking"); setUrlMsg("Checking reachability...");
+      urlTimer.current = setTimeout(async () => {
+        const r = await checkDriveUrl(val); setUrlStatus(r.exists ? "valid" : "invalid"); setUrlMsg(r.message);
+      }, 500);
+    } else {
+      // Non-Drive sources: basic URL check
+      try { new URL(val.trim()); setUrlStatus("valid"); setUrlMsg("Valid URL"); }
+      catch { setUrlStatus("invalid"); setUrlMsg("Invalid URL format"); }
+    }
   }
 
   /* ---------- Single: GitHub validation ---------- */
@@ -433,9 +440,9 @@ export default function ContributePage() {
                 {touched.title && !title.trim() && <p className="mt-1 text-xs text-red-500">Required</p>}
               </div>
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Drive URL</label>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">{!isNewSource && source === "jammu-university" ? "Drive URL" : "Document URL"}</label>
                 <input type="url" value={url} onChange={e => handleUrlChange(e.target.value)} onBlur={() => markTouched("url")}
-                  placeholder="https://drive.google.com/file/d/..."
+                  placeholder={!isNewSource && source === "jammu-university" ? "https://drive.google.com/file/d/..." : "https://..."}
                   className={`w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 transition-all focus:ring-2 ${touched.url && urlStatus === "invalid" ? "ring-red-300 focus:ring-red-400" : "ring-border/30 focus:ring-brand/30"}`} />
                 <div className="mt-1 flex items-center gap-1.5">
                   {urlStatus === "checking" && <><svg className="h-3 w-3 animate-spin text-muted-foreground/50" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" /><path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" /></svg><span className="text-xs text-muted-foreground/60">{urlMsg}</span></>}

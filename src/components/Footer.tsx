@@ -43,10 +43,10 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/contributors"
+                  href="/sources"
                   className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  Contributors
+                  Sources
                 </Link>
               </li>
             </ul>

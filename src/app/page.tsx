@@ -6,6 +6,7 @@ import type { Document } from "@/lib/types";
 import { getThumbnailUrl } from "@/lib/types";
 import { reportBrokenLink } from "@/lib/report";
 import { SearchHero } from "@/components/SearchHero";
+import { getAllContributors } from "@/lib/contributors";
 
 const CATEGORY_SECTIONS = [
   { type: "pyq" as const, title: "Previous Year Questions", subtitle: "Past exam papers from all semesters" },
@@ -21,6 +22,8 @@ export default function Home() {
     const source = params.get("source");
     if (source) setDefaultSource(source);
   }, []);
+
+  const contributors = useMemo(() => getAllContributors(), []);
 
   // Recent documents sorted by upload date (newest first)
   const recentDocs = useMemo(() => {
@@ -179,6 +182,74 @@ export default function Home() {
           </section>
         )}
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/*  JU LEARNING IS ALL OF US                                      */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <section className="mt-32 pb-8 text-center">
+        <h2 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+          JU Learning is all of us
+        </h2>
+
+        {contributors.length > 0 && (
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-5">
+            {contributors.map((c) => (
+              <a
+                key={c.username}
+                href={`https://github.com/${c.username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative"
+              >
+                <img
+                  src={`https://github.com/${c.username}.png?size=80`}
+                  alt={c.username}
+                  className="h-14 w-14 rounded-full ring-2 ring-border/20 transition-all duration-300 group-hover:ring-brand group-hover:scale-110 sm:h-16 sm:w-16"
+                  loading="lazy"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+
+        <p className="mt-10 text-xl font-bold text-muted-foreground sm:text-2xl">
+          The next one can be you.
+        </p>
+        <a
+          href="https://github.com/julearning/metadata"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 inline-block bg-brand px-10 py-4 text-lg font-bold text-white transition-opacity hover:opacity-90"
+        >
+          Contribute on GitHub →
+        </a>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/*  SUPPORT US                                                    */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <section className="mt-20 border-t border-border/10 pt-20 pb-8 text-center">
+        <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+          Support us
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
+          We love open source and we believe in it. Help us keep JU Learning
+          free and accessible for every student.
+        </p>
+        <a
+          href="https://opencollective.com/julearning"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-8 inline-flex items-center gap-3 bg-surface px-8 py-4 text-base font-bold text-foreground transition-all duration-300 hover:bg-brand hover:text-white ring-1 ring-border/20"
+        >
+          <svg viewBox="0 0 48 48" fill="none" className="h-6 w-6">
+            <circle cx="24" cy="24" r="24" fill="#297EFF"/>
+            <circle cx="24" cy="24" r="16" fill="#fff"/>
+            <circle cx="24" cy="24" r="7.5" fill="#297EFF"/>
+          </svg>
+          Open Collective
+        </a>
+      </section>
     </main>
   );
 }
