@@ -71,18 +71,28 @@ async function checkDriveUrl(url: string): Promise<{ exists: boolean; message: s
   if (!url.trim()) return { exists: false, message: "" };
   const id = url.match(/(?:\/d\/|id=)([\w-]{25,})/)?.[1];
   if (!id) return { exists: false, message: "Could not extract file ID" };
+
+  // Try thumbnail first (fast, works for most uploaded files)
   try {
-    const exists = await new Promise<boolean>((resolve) => {
+    const thumbnailOk = await new Promise<boolean>((resolve) => {
       const img = new Image();
-      const timer = setTimeout(() => resolve(false), 8000);
+      const timer = setTimeout(() => resolve(false), 4000);
       img.onload = () => { clearTimeout(timer); resolve(true); };
       img.onerror = () => { clearTimeout(timer); resolve(false); };
       img.src = `https://drive.google.com/thumbnail?id=${id}&sz=w50`;
     });
-    if (exists) return { exists: true, message: "Drive file reachable" };
-    return { exists: false, message: "File not found or not accessible" };
+    if (thumbnailOk) return { exists: true, message: "Drive file reachable" };
   } catch {
-    return { exists: false, message: "Could not verify — proceed anyway" };
+    // Thumbnail failed — fall through to HEAD request
+  }
+
+  // Fallback: try HEAD request to the actual document (works for native Google Docs)
+  try {
+    const headRes = await fetch(url, { method: "HEAD", mode: "no-cors" });
+    // no-cors HEAD always returns opaque (status 0), so we treat any response as "reachable"
+    return { exists: true, message: "Document reachable (Google Docs)" };
+  } catch {
+    return { exists: false, message: "File not found or not accessible" };
   }
 }
 

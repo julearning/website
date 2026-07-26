@@ -68,7 +68,8 @@ export function formatFileSize(bytes: number): string {
 }
 
 export function getFileIdFromUrl(url: string): string | null {
-  const match = url.match(/\/file\/d\/([^/]+)\//);
+  // Match /file/d/..., /document/d/..., /spreadsheets/d/..., /presentation/d/...
+  const match = url.match(/\/(?:file|document|spreadsheets|presentation)\/d\/([^/]+)\//);
   return match ? match[1] : null;
 }
 
