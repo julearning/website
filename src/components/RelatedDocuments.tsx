@@ -27,7 +27,7 @@ function RelatedCard({ doc }: { doc: JLDoc }) {
       href={doc.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block bg-white transition-all duration-300 hover:bg-brand"
+      className="group block bg-surface transition-all duration-300 hover:bg-brand"
     >
       {/* Thumbnail */}
       <div className="relative overflow-hidden bg-accent">
@@ -55,7 +55,7 @@ function RelatedCard({ doc }: { doc: JLDoc }) {
             {displayTags.map((tag) => (
               <span
                 key={tag}
-                className="bg-white/95 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white"
+                className="bg-surface/95 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white"
               >
                 {TAG_LABELS[tag] || tag}
               </span>

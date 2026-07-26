@@ -26,7 +26,7 @@ export function ResultCard({ result }: { result: SearchResult }) {
   const displayTags = doc.tags.slice(0, 2);
 
   return (
-    <div className="group block break-inside-avoid bg-white transition-all duration-300 hover:bg-brand mb-5">
+    <div className="group block break-inside-avoid bg-surface transition-all duration-300 hover:bg-brand mb-5">
       <a
         href={doc.url}
         target="_blank"
@@ -59,7 +59,7 @@ export function ResultCard({ result }: { result: SearchResult }) {
               {displayTags.map((tag) => (
                 <span
                   key={tag}
-                  className="bg-white/95 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white"
+                  className="bg-surface/95 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white"
                 >
                   {TAG_LABELS[tag] || tag}
                 </span>

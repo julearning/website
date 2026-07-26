@@ -165,7 +165,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
 
         {/* Search — bigger, no curves */}
         <div className="relative mt-12 w-full max-w-2xl">
-          <div className="flex items-center bg-white ring-1 ring-border/30 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand/20">
+          <div className="flex items-center bg-surface ring-1 ring-border/30 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand/20">
             <div className="relative flex-1">
               <input
                 ref={inputRef}

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const NAV_ITEMS = [
   { href: "/pyq", label: "PYQs" },
@@ -71,6 +72,7 @@ export function Navbar() {
           >
             GitHub
           </a>
+          <ThemeToggle />
         </nav>
 
         {/* Mobile hamburger */}
@@ -106,15 +108,18 @@ export function Navbar() {
               </Link>
             ))}
             <div className="my-4 h-px bg-border/10" />
-            <a
-              href="https://github.com/julearning"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={closeMenu}
-              className="py-4 text-xl font-bold text-foreground transition-opacity hover:opacity-60"
-            >
-              GitHub
-            </a>
+            <div className="flex items-center justify-between py-4">
+              <a
+                href="https://github.com/julearning"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={closeMenu}
+                className="text-xl font-bold text-foreground transition-opacity hover:opacity-60"
+              >
+                GitHub
+              </a>
+              <ThemeToggle />
+            </div>
           </nav>
         </div>
       )}

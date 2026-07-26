@@ -68,7 +68,7 @@ export default function Home() {
         href={`https://github.com/${username}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex items-center gap-3 bg-white px-4 py-3 transition-all duration-300 hover:bg-brand"
+        className="group flex items-center gap-3 bg-surface px-4 py-3 transition-all duration-300 hover:bg-brand"
       >
         {!imgFailed ? (
           <img
@@ -79,7 +79,7 @@ export default function Home() {
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <div className="flex h-8 w-8 items-center justify-center bg-accent text-xs font-bold text-muted-foreground transition-colors duration-300 group-hover:bg-white/20 group-hover:text-white/80">
+          <div className="flex h-8 w-8 items-center justify-center bg-accent text-xs font-bold text-muted-foreground transition-colors duration-300 group-hover:bg-surface/20 group-hover:text-white/80">
             {username.charAt(0).toUpperCase()}
           </div>
         )}
@@ -101,7 +101,7 @@ export default function Home() {
     const showThumb = thumb && !imgFailed;
 
     return (
-      <div className="group block break-inside-avoid bg-white transition-all duration-300 hover:bg-brand mb-5">
+      <div className="group block break-inside-avoid bg-surface transition-all duration-300 hover:bg-brand mb-5">
         <a
           href={doc.url}
           target="_blank"
@@ -237,7 +237,7 @@ export default function Home() {
                 <Link
                   key={branch}
                   href={`/branches/${branch.toLowerCase()}`}
-                  className="group bg-white p-7 transition-all duration-300 hover:bg-brand"
+                  className="group bg-surface p-7 transition-all duration-300 hover:bg-brand"
                 >
                   <p className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{branch}</p>
                   <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
@@ -259,7 +259,7 @@ export default function Home() {
                 <Link
                   key={sem}
                   href={`/semesters/cse/${sem}`}
-                  className="group bg-white p-6 text-center transition-all duration-300 hover:bg-brand"
+                  className="group bg-surface p-6 text-center transition-all duration-300 hover:bg-brand"
                 >
                   <p className="text-2xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{sem}</p>
                   <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} docs</p>
@@ -282,7 +282,7 @@ export default function Home() {
                 <Link
                   key={subject}
                   href={`/subjects/${branchSlug}/${sem}/${encodeURIComponent(subject)}`}
-                  className="group bg-white p-6 text-left transition-all duration-300 hover:bg-brand"
+                  className="group bg-surface p-6 text-left transition-all duration-300 hover:bg-brand"
                 >
                   <p className="text-base font-medium text-foreground transition-colors duration-300 group-hover:text-white">{subject}</p>
                   <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} documents</p>

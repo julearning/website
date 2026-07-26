@@ -52,7 +52,7 @@ export function SortDropdown({ value, onChange }: Props) {
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-1 min-w-[140px] bg-white py-1">
+        <div className="absolute right-0 top-full z-20 mt-1 min-w-[140px] bg-surface py-1 ring-1 ring-border/30">
           {options.map((option) => (
             <button
               key={option}

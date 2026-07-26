@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--fg);
@@ -19,9 +21,22 @@
   --muted: oklch(0.95 0.005 75);
   --muted-fg: oklch(0.55 0.01 75);
   --accent: oklch(0.93 0.01 75);
-  --surface: oklch(0.97 0.005 75);
+  --surface: oklch(1 0 0);
   --border: oklch(0.88 0.01 75);
   --brand: #bf00ff;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: oklch(0.07 0.005 75);
+  --fg: oklch(0.93 0.005 75);
+  --muted: oklch(0.14 0.005 75);
+  --muted-fg: oklch(0.55 0.01 75);
+  --accent: oklch(0.13 0.005 75);
+  --surface: oklch(0.105 0.005 75);
+  --border: oklch(0.18 0.005 75);
+  --brand: #bf00ff;
+  color-scheme: dark;
 }
 
 body {
@@ -30,10 +45,15 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 ::selection {
   background: #bf00ff26;
+}
+
+.dark ::selection {
+  background: #bf00ff40;
 }
 
 @layer base {
