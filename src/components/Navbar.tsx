@@ -27,7 +27,7 @@ export function Navbar() {
   // Close menu on resize to desktop
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth >= 768) setMenuOpen(false);
+      if (window.innerWidth >= 1024) setMenuOpen(false);
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -54,7 +54,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-0 lg:flex">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.label}
@@ -78,7 +78,7 @@ export function Navbar() {
         {/* Mobile hamburger */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="flex md:hidden"
+          className="flex lg:hidden"
           aria-label={menuOpen ? "Close menu" : "Open menu"}
         >
           {menuOpen ? (
@@ -91,7 +91,7 @@ export function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="border-t border-border/10 md:hidden">
+        <div className="border-t border-border/10 lg:hidden">
           <nav className="mx-auto flex max-w-6xl flex-col px-6 py-4">
             {NAV_ITEMS.map((item) => (
               <Link

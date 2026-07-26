@@ -185,10 +185,10 @@ export default function Home() {
           cat.docs.length > 0 ? (
             <section key={cat.tag} id={cat.tag}>
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-foreground">{cat.title}</h2>
+                <h2 className="text-xl font-bold text-foreground">{cat.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{cat.subtitle}</p>
               </div>
-              <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
+              <div className="columns-1 gap-3 sm:columns-2 lg:columns-3">
                 {cat.docs.map((doc) => (
                   <CategoryCard key={doc.id} doc={doc} />
                 ))}
