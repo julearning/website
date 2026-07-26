@@ -6,12 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X, Users } from "lucide-react";
 
 const NAV_ITEMS: Array<{ href: string; label: string; icon?: React.ReactNode }> = [
-  { href: "/pyq", label: "PYQs" },
-  { href: "/handwritten", label: "Handwritten" },
-  { href: "/digital-notes", label: "Digital Notes" },
-  { href: "/branches", label: "Branches" },
-  { href: "/subjects", label: "Subjects" },
-  { href: "/degree", label: "Degree" },
+  { href: "/sources", label: "Sources" },
   { href: "/contributors", label: "Contributors", icon: <Users className="h-4 w-4" /> },
 ];
 

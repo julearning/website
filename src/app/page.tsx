@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
-import { documents, getUniqueBranches, getDocumentsByBranch } from "@/data/documents";
-import type { Branch, Document } from "@/lib/types";
+import { documents } from "@/data/documents";
+import type { Document } from "@/lib/types";
 import { getThumbnailUrl } from "@/lib/types";
 import { getReportUrl } from "@/lib/report";
 import { SearchHero } from "@/components/SearchHero";
-import { RevealSection } from "@/components/RevealSection";
-import { ContributorCircle } from "@/components/ContributorCircle";
+import { BrowseStepper } from "@/components/BrowseStepper";
 
 const CATEGORY_SECTIONS = [
   { type: "pyq" as const, title: "Previous Year Questions", subtitle: "Past exam papers from all semesters" },
@@ -35,28 +33,6 @@ export default function Home() {
     }));
   }, []);
 
-  // Contributor leaderboard: count documents per contributor
-  const allContributors = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const doc of documents) {
-      const c = doc.contributor || "unknown";
-      counts[c] = (counts[c] || 0) + 1;
-    }
-    return Object.entries(counts)
-      .sort(([, a], [, b]) => b - a)
-      .map(([username, count]) => ({ username, count }));
-  }, []);
-
-  const topContributors = allContributors.slice(0, 8);
-
-  // Only JU content for browse navigation — other sources appear only in search
-  const juDocs = useMemo(() => documents.filter((d) => d.source === "jammu-university"), []);
-
-  const branches = getUniqueBranches();
-  const allSemesters = [...new Set(juDocs.map((d) => d.semester).filter((s): s is number => s != null))].sort((a, b) => a - b);
-  const allSubjects = [...new Set(juDocs.map((d) => d.subject).filter(Boolean))].sort();
-  const topSubjects = allSubjects.slice(0, 12);
-
   function formatDate(dateStr: string | undefined) {
     if (!dateStr) return "";
     try {
@@ -64,41 +40,6 @@ export default function Home() {
     } catch {
       return "";
     }
-  }
-
-  function ContributorCard({ username, count }: { username: string; count: number }) {
-    const [imgFailed, setImgFailed] = useState(false);
-
-    return (
-      <a
-        href={`https://github.com/${username}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group flex items-center gap-3 bg-surface px-4 py-3 transition-all duration-300 hover:bg-brand"
-      >
-        {!imgFailed ? (
-          <img
-            src={`https://github.com/${username}.png?size=40`}
-            alt={username}
-            className="h-8 w-8 transition-opacity duration-300 group-hover:opacity-90"
-            loading="lazy"
-            onError={() => setImgFailed(true)}
-          />
-        ) : (
-          <div className="flex h-8 w-8 items-center justify-center bg-accent text-xs font-bold text-muted-foreground transition-colors duration-300 group-hover:bg-surface/20 group-hover:text-white/80">
-            {username.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground transition-colors duration-300 group-hover:text-white">
-            {username}
-          </p>
-          <p className="text-[11px] text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
-            {count} document{count !== 1 ? "s" : ""}
-          </p>
-        </div>
-      </a>
-    );
   }
 
   function CategoryCard({ doc }: { doc: Document }) {
@@ -144,7 +85,6 @@ export default function Home() {
           </div>
         </a>
 
-        {/* Footer: contributor + report */}
         <div className="border-t border-border/30 transition-colors duration-300 group-hover:border-white/20">
           {doc.contributor && (
             <a
@@ -181,15 +121,15 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 pb-16">
-      {/* Search hero — reusable component with all search logic */}
+      {/* Search hero */}
       <SearchHero />
 
-      {/* Browse sections — always visible below search results */}
+      {/* Browse sections */}
       <div className="mt-16 space-y-20">
         {/* Category Sections: PYQs, Handwritten, Digital Notes */}
         {categoryDocs.map((cat) =>
           cat.docs.length > 0 ? (
-            <RevealSection key={cat.type} id={cat.type}>
+            <section key={cat.type}>
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-foreground">{cat.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{cat.subtitle}</p>
@@ -199,122 +139,26 @@ export default function Home() {
                   <CategoryCard key={doc.id} doc={doc} />
                 ))}
               </div>
-            </RevealSection>
+            </section>
           ) : null
         )}
 
-        {/* Contributors */}
-        {topContributors.length > 0 && (
-          <RevealSection delay={0.1}>
-            <h2 className="mb-6 text-lg font-semibold text-foreground">Top Contributors</h2>
-            <p className="mb-4 text-sm text-muted-foreground">Students who have shared study materials with the community.</p>
-            <div className="flex flex-wrap gap-3">
-              {topContributors.map(({ username, count }) => (
-                <ContributorCard key={username} username={username} count={count} />
-              ))}
-            </div>
-          </RevealSection>
-        )}
+        {/* Browse Branch → Semester → Subject */}
+        <section>
+          <h2 className="mb-6 text-xl font-bold text-foreground">Browse Materials</h2>
+          <BrowseStepper />
+        </section>
 
         {/* Recently Added */}
-        <RevealSection delay={0.15}>
-          <h2 className="mb-6 text-lg font-semibold text-foreground">Recently Added</h2>
-          <div className="columns-2 gap-5 lg:columns-3">
-            {recentDocs.map((doc) => (
-              <CategoryCard key={doc.id} doc={doc} />
-            ))}
-          </div>
-        </RevealSection>
-
-        {/* Browse by Branch */}
-        <RevealSection delay={0.2}>
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Browse by Branch</h2>
-            <Link href="/branches" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              View all →
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-            {branches.map((branch) => {
-              const docCount = getDocumentsByBranch(branch).length;
-              const semesters = [...new Set(getDocumentsByBranch(branch).map((d) => d.semester))].sort();
-
-              return (
-                <Link
-                  key={branch}
-                  href={`/branches/${branch.toLowerCase()}`}
-                  className="group bg-surface p-7 transition-all duration-300 hover:bg-brand"
-                >
-                  <p className="text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{branch}</p>
-                  <p className="mt-2 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
-                    {docCount} documents · {semesters.length} semesters
-                  </p>
-                </Link>
-              );
-            })}
-          </div>
-        </RevealSection>
-
-        {/* Browse by Semester */}
-        <RevealSection delay={0.25}>
-          <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Semester</h2>
-          <p className="mb-4 text-sm text-muted-foreground">Select your branch first to see semester-specific materials.</p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
-            {allSemesters.map((sem) => {
-              // Count JU docs in this semester across all branches
-              const semDocs = juDocs.filter((d) => d.semester === sem);
-              const branchesInSem = [...new Set(semDocs.map((d) => d.branch))];
-              return (
-                <Link
-                  key={sem}
-                  href="/branches"
-                  className="group bg-surface p-6 text-center transition-all duration-300 hover:bg-brand"
-                >
-                  <p className="text-2xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{sem}</p>
-                  <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{semDocs.length} docs</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground/40 transition-colors duration-300 group-hover:text-white/60">{branchesInSem.length} branch{branchesInSem.length !== 1 ? "es" : ""}</p>
-                </Link>
-              );
-            })}
-          </div>
-        </RevealSection>
-
-        {/* Browse by Subject — only JU subjects with valid branch+semester */}
-        {topSubjects.length > 0 && (
-          <RevealSection delay={0.3}>
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Browse by Subject</h2>
-              <Link href="/subjects" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                View all →
-              </Link>
+        {recentDocs.length > 0 && (
+          <section>
+            <h2 className="mb-6 text-xl font-bold text-foreground">Recently Added</h2>
+            <div className="columns-2 gap-5 lg:columns-3">
+              {recentDocs.map((doc) => (
+                <CategoryCard key={doc.id} doc={doc} />
+              ))}
             </div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {topSubjects.map((subject) => {
-                const juSubjectDocs = juDocs.filter((d) => d.subject === subject);
-                const docCount = juSubjectDocs.length;
-                const firstDoc = juSubjectDocs[0];
-                const branchSlug = firstDoc?.branch?.toLowerCase() || "cse";
-                const sem = firstDoc?.semester ?? 1;
-                return (
-                  <Link
-                    key={subject}
-                    href={`/subjects/${branchSlug}/${sem}/${encodeURIComponent(subject)}`}
-                    className="group bg-surface p-6 text-left transition-all duration-300 hover:bg-brand"
-                  >
-                    <p className="text-base font-medium text-foreground transition-colors duration-300 group-hover:text-white">{subject}</p>
-                    <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} documents</p>
-                  </Link>
-                );
-              })}
-            </div>
-          </RevealSection>
-        )}
-
-        {/* JU Learning is all of us */}
-        {allContributors.length > 0 && (
-          <RevealSection delay={0.35}>
-            <ContributorCircle contributors={allContributors} />
-          </RevealSection>
+          </section>
         )}
       </div>
     </main>
