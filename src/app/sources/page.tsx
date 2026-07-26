@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { documents } from "@/data/documents";
 
 export const metadata: Metadata = {
@@ -75,14 +76,22 @@ export default function SourcesPage() {
                 {source.count}
               </p>
             </div>
-            <a
-              href={source.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-block text-sm font-semibold text-muted-foreground transition-colors duration-300 hover:underline group-hover:text-white/80"
-            >
-              Visit {source.name} ↗
-            </a>
+            <div className="mt-4 flex items-center gap-4">
+              <Link
+                href={source.id === "jammu-university" ? "/" : `/?source=${source.id}`}
+                className="text-sm font-bold text-foreground transition-colors duration-300 group-hover:text-white underline underline-offset-4"
+              >
+                Browse {source.name} materials →
+              </Link>
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-muted-foreground transition-colors duration-300 hover:underline group-hover:text-white/60"
+              >
+                Visit site ↗
+              </a>
+            </div>
           </div>
         ))}
       </div>

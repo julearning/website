@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { documents } from "@/data/documents";
 import type { Document } from "@/lib/types";
 import { getThumbnailUrl } from "@/lib/types";
 import { getReportUrl } from "@/lib/report";
 import { SearchHero } from "@/components/SearchHero";
-import { BrowseStepper } from "@/components/BrowseStepper";
 
 const CATEGORY_SECTIONS = [
   { type: "pyq" as const, title: "Previous Year Questions", subtitle: "Past exam papers from all semesters" },
@@ -15,6 +14,14 @@ const CATEGORY_SECTIONS = [
 ];
 
 export default function Home() {
+  const [defaultSource, setDefaultSource] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get("source");
+    if (source) setDefaultSource(source);
+  }, []);
+
   // Recent documents sorted by upload date (newest first)
   const recentDocs = useMemo(() => {
     return [...documents]
@@ -121,8 +128,7 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 pb-16">
-      {/* Search hero */}
-      <SearchHero />
+      <SearchHero defaultSource={defaultSource} />
 
       {/* Browse sections */}
       <div className="mt-16 space-y-20">
@@ -142,12 +148,6 @@ export default function Home() {
             </section>
           ) : null
         )}
-
-        {/* Browse Branch → Semester → Subject */}
-        <section>
-          <h2 className="mb-6 text-xl font-bold text-foreground">Browse Materials</h2>
-          <BrowseStepper />
-        </section>
 
         {/* Recently Added */}
         {recentDocs.length > 0 && (

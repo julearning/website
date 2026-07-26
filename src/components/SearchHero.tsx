@@ -3,18 +3,21 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { documents } from "@/data/documents";
 import { searchDocuments, type SearchResult } from "@/lib/search";
-import type { FilterState, DocType } from "@/lib/types";
+import type { FilterState, DocType, Branch } from "@/lib/types";
 import { TYPE_LABELS } from "@/lib/types";
 import { ResultCard } from "@/components/ResultCard";
 import { PaginatedGrid } from "@/components/PaginatedGrid";
 import { SortDropdown, type SortOption } from "@/components/SortDropdown";
 import { TypeFilter } from "@/components/TypeFilter";
 import { SourceDropdown, type SourceOption } from "@/components/SourceDropdown";
+
 interface SearchHeroProps {
   title?: string;
   subtitle?: string;
   defaultType?: DocType;
   searchOnMount?: boolean;
+  /** Pre-select a source filter, e.g. from URL query param */
+  defaultSource?: string;
 }
 
 /** Source display order: "jammu-university" always first, rest alphabetically */
@@ -31,6 +34,28 @@ function getSourceLabel(source: string): string {
     "wikibooks": "Wikibooks",
   };
   return labels[source] || source;
+}
+
+function getSourceTitle(source: string): string {
+  const titles: Record<string, string> = {
+    "jammu-university": "JU Learning",
+    "open-textbook-library": "Open Textbook Library",
+    "openstax": "OpenStax",
+    "project-gutenberg": "Project Gutenberg",
+    "wikibooks": "Wikibooks",
+  };
+  return titles[source] || "JU Learning";
+}
+
+function getSourceSubtitle(source: string): string {
+  const subtitles: Record<string, string> = {
+    "jammu-university": "Every branch. Every semester. Every note.",
+    "open-textbook-library": "Openly licensed textbooks reviewed by faculty.",
+    "openstax": "Free peer-reviewed textbooks from Rice University.",
+    "project-gutenberg": "Classic out-of-copyright books digitized by volunteers.",
+    "wikibooks": "Open-content textbooks from the Wikimedia community.",
+  };
+  return subtitles[source] || "Every branch. Every semester. Every note.";
 }
 
 /** Group results by source, JU first, others alphabetically */
@@ -55,7 +80,43 @@ function groupBySource(results: SearchResult[]): Array<{ source: string; label: 
   return sorted;
 }
 
-export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Every semester. Every note.", defaultType, searchOnMount }: SearchHeroProps) {
+/** Only JU documents for the browse chips */
+const juDocs = documents.filter((d) => d.source === "jammu-university");
+
+function getBranches(): string[] {
+  return [...new Set(juDocs.map((d) => d.branch).filter(Boolean))].sort() as string[];
+}
+
+function getSemesters(branch: string): number[] {
+  return [...new Set(juDocs.filter((d) => d.branch === branch).map((d) => d.semester))].filter((s): s is number => s != null).sort((a, b) => a - b);
+}
+
+function getSubjects(branch: string, semester: number): string[] {
+  return [...new Set(juDocs.filter((d) => d.branch === branch && d.semester === semester).map((d) => d.subject).filter(Boolean))].sort();
+}
+
+function BrowseChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-6 py-4 text-xl font-bold transition-all duration-200 sm:px-10 sm:py-5 sm:text-2xl ${
+        active
+          ? "bg-brand text-white"
+          : "bg-surface text-foreground hover:bg-brand hover:text-white"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+export function SearchHero({
+  title: propTitle,
+  subtitle: propSubtitle,
+  defaultType,
+  searchOnMount,
+  defaultSource,
+}: SearchHeroProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,9 +124,22 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
   const [isFocused, setIsFocused] = useState(false);
   const [sort, setSort] = useState<SortOption>("relevance");
   const [activeType, setActiveType] = useState<DocType | null>(defaultType ?? null);
-  const [activeSources, setActiveSources] = useState<string[]>([]);
+  const [activeSources, setActiveSources] = useState<string[]>(defaultSource ? [defaultSource] : []);
+  const [activeBranch, setActiveBranch] = useState<string | null>(null);
+  const [activeSemester, setActiveSemester] = useState<number | null>(null);
+  const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Determine title/subtitle based on active source
+  const selectedSource = activeSources.length === 1 ? activeSources[0] : null;
+  const title = propTitle || (selectedSource ? getSourceTitle(selectedSource) : "JU Learning");
+  const subtitle = propSubtitle || (selectedSource ? getSourceSubtitle(selectedSource) : "Every branch. Every semester. Every note.");
+
+  // Compute browse chip options
+  const branches = useMemo(() => getBranches(), []);
+  const semesters = useMemo(() => activeBranch ? getSemesters(activeBranch) : [], [activeBranch]);
+  const subjects = useMemo(() => activeBranch && activeSemester ? getSubjects(activeBranch, activeSemester) : [], [activeBranch, activeSemester]);
 
   // Compute available sources from documents
   const availableSources: SourceOption[] = useMemo(() => {
@@ -85,10 +159,20 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     q: string,
     sortOverride?: SortOption,
     typeOverride?: DocType | null,
-    sourcesOverride?: string[]
+    sourcesOverride?: string[],
+    branchOverride?: string | null,
+    semesterOverride?: number | null,
+    subjectOverride?: string | null,
   ) {
     const qTrim = q.trim();
-    if (!qTrim && !(typeOverride ?? activeType) && (sourcesOverride ?? activeSources).length === 0) {
+    const currentBranch = branchOverride ?? activeBranch;
+    const currentSemester = semesterOverride ?? activeSemester;
+    const currentSubject = subjectOverride ?? activeSubject;
+    const currentSources = sourcesOverride ?? activeSources;
+    const currentType = typeOverride ?? activeType;
+
+    // Don't clear if there are browse selections
+    if (!qTrim && !currentType && currentSources.length === 0 && !currentBranch && !currentSemester && !currentSubject) {
       setResults([]);
       setHasSearched(false);
       return;
@@ -100,11 +184,11 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
 
     const filters: FilterState = {
       query: q,
-      branch: null,
-      semester: null,
-      subject: null,
-      types: (typeOverride ?? activeType) ? [(typeOverride ?? activeType)!] : [],
-      sources: sourcesOverride ?? activeSources,
+      branch: currentBranch as Branch | null,
+      semester: currentSemester,
+      subject: currentSubject,
+      types: currentType ? [currentType] : [],
+      sources: currentSources,
       sort: sortOverride ?? sort,
     };
     const found = searchDocuments(documents, filters);
@@ -154,6 +238,14 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // If a defaultSource was provided, perform a search on mount
+  useEffect(() => {
+    if (defaultSource) {
+      performSearch("", undefined, undefined, [defaultSource]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultSource]);
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -186,13 +278,16 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     setHasSearched(false);
     setSort("relevance");
     setActiveType(defaultType ?? null);
-    setActiveSources([]);
+    setActiveSources(defaultSource ? [defaultSource] : []);
+    setActiveBranch(null);
+    setActiveSemester(null);
+    setActiveSubject(null);
     inputRef.current?.focus();
   }
 
   function handleSortChange(newSort: SortOption) {
     setSort(newSort);
-    if (hasSearched && (query.trim() || activeType || activeSources.length > 0)) {
+    if (hasSearched) {
       performSearch(query, newSort);
     }
   }
@@ -204,7 +299,45 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
 
   function handleSourcesChange(newSources: string[]) {
     setActiveSources(newSources);
+    // If switching away from a single source, reset the title
     performSearch(query, undefined, undefined, newSources);
+  }
+
+  // Browse chip handlers
+  function handleBranchClick(branch: string) {
+    if (branch === activeBranch) {
+      setActiveBranch(null);
+      setActiveSemester(null);
+      setActiveSubject(null);
+      performSearch(query, undefined, undefined, undefined, null, null, null);
+    } else {
+      setActiveBranch(branch);
+      setActiveSemester(null);
+      setActiveSubject(null);
+      performSearch(query, undefined, undefined, undefined, branch, null, null);
+    }
+  }
+
+  function handleSemesterClick(sem: number) {
+    if (sem === activeSemester) {
+      setActiveSemester(null);
+      setActiveSubject(null);
+      performSearch(query, undefined, undefined, undefined, undefined, null, null);
+    } else {
+      setActiveSemester(sem);
+      setActiveSubject(null);
+      performSearch(query, undefined, undefined, undefined, undefined, sem, null);
+    }
+  }
+
+  function handleSubjectClick(subject: string) {
+    if (subject === activeSubject) {
+      setActiveSubject(null);
+      performSearch(query, undefined, undefined, undefined, undefined, undefined, null);
+    } else {
+      setActiveSubject(subject);
+      performSearch(query, undefined, undefined, undefined, undefined, undefined, subject);
+    }
   }
 
   // Group results by source
@@ -215,9 +348,12 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
 
   const showSourceHeadings = activeSources.length <= 1 && availableSources.length > 1;
 
+  // Step indicator
+  const showStepIndicator = activeBranch || activeSemester || activeSubject;
+
   return (
     <>
-      <div className="flex min-h-[calc(100dvh-60px)] flex-col items-center justify-center text-center">
+      <div className="flex flex-col items-center text-center pt-12 sm:pt-16">
         <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-7xl lg:text-8xl">
           {title}
         </h1>
@@ -267,8 +403,87 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
             )}
           </div>
 
-          {/* Filters — under the search bar */}
-          <div className="flex flex-wrap items-center justify-end gap-1 pt-2">
+          {/* Browse chips — right below the search bar, big and bold */}
+          {branches.length > 0 && (
+            <div className="mt-6 text-left">
+              {showStepIndicator && (
+                <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground/60">
+                  <button
+                    onClick={() => { setActiveBranch(null); setActiveSemester(null); setActiveSubject(null); performSearch(query, undefined, undefined, undefined, null, null, null); }}
+                    className="hover:text-foreground transition-colors font-bold"
+                  >
+                    Browse
+                  </button>
+                  {activeBranch && <><span>/</span><span className="font-bold text-foreground">{activeBranch}</span></>}
+                  {activeSemester && <><span>/</span><span className="font-bold text-foreground">Sem {activeSemester}</span></>}
+                  {activeSubject && <><span>/</span><span className="font-bold text-foreground">{activeSubject}</span></>}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-4">
+                {!activeBranch ? (
+                  /* Step 1: Show all branches */
+                  branches.map((branch) => (
+                    <BrowseChip
+                      key={branch}
+                      label={branch}
+                      active={false}
+                      onClick={() => handleBranchClick(branch)}
+                    />
+                  ))
+                ) : !activeSemester ? (
+                  /* Step 2: Show semesters for selected branch */
+                  semesters.map((sem) => (
+                    <BrowseChip
+                      key={sem}
+                      label={`Semester ${sem}`}
+                      active={false}
+                      onClick={() => handleSemesterClick(sem)}
+                    />
+                  ))
+                ) : !activeSubject ? (
+                  /* Step 3: Show subjects for selected branch + semester */
+                  subjects.map((subj) => (
+                    <BrowseChip
+                      key={subj}
+                      label={subj}
+                      active={false}
+                      onClick={() => handleSubjectClick(subj)}
+                    />
+                  ))
+                ) : null}
+              </div>
+
+              {/* Back button when a selection is made */}
+              {activeBranch && !activeSemester && (
+                <button
+                  onClick={() => handleBranchClick(activeBranch)}
+                  className="mt-4 text-sm text-muted-foreground/50 hover:text-foreground transition-colors"
+                >
+                  ← Back to branches
+                </button>
+              )}
+              {activeSemester && !activeSubject && (
+                <button
+                  onClick={() => handleSemesterClick(activeSemester)}
+                  className="mt-4 text-sm text-muted-foreground/50 hover:text-foreground transition-colors"
+                >
+                  ← Back to semesters
+                </button>
+              )}
+              {activeSubject && (
+                <button
+                  onClick={() => handleSubjectClick(activeSubject)}
+                  className="mt-4 text-sm text-muted-foreground/50 hover:text-foreground transition-colors"
+                >
+                  ← Back to subjects
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Filters — under the search bar and browse chips */}
+          <div className="flex flex-wrap items-center justify-end gap-1 pt-4">
             <SortDropdown value={sort} onChange={handleSortChange} />
             <TypeFilter activeType={activeType} onChange={handleTypeChange} />
             {availableSources.length > 1 && (
@@ -313,14 +528,12 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
               <p className="mt-2 text-sm text-muted-foreground/50">Try broadening your search or removing some filters.</p>
             </div>
           ) : grouped.length === 1 ? (
-            /* Single source: show flat results */
             <PaginatedGrid
               items={grouped[0].docs}
               renderItem={(result) => <ResultCard key={result.doc.id} result={result} />}
               itemsPerPage={9}
             />
           ) : (
-            /* Multiple sources: show grouped with source headings */
             <div className="space-y-12">
               {grouped.map((group) => (
                 <section key={group.source}>

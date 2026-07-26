@@ -39,7 +39,7 @@ export function Navbar() {
   }
 
   return (
-    <header className="border-b border-border/10">
+    <header className="border-b border-border/10 relative">
       {/* GitHub overlay — fixed top-right, outside the normal flow */}
       <a
         href="https://github.com/julearning"
@@ -54,7 +54,20 @@ export function Navbar() {
       </a>
 
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-7 md:py-10">
-        {/* Logo — big and bold */}
+        {/* Mobile hamburger — left side */}
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="flex items-center lg:hidden"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+        >
+          {menuOpen ? (
+            <X className="h-8 w-8 text-foreground" />
+          ) : (
+            <Menu className="h-8 w-8 text-foreground" />
+          )}
+        </button>
+
+        {/* Logo — centered-ish on mobile, left on desktop */}
         <Link
           href="/"
           className="text-3xl font-extrabold tracking-tight text-foreground transition-opacity hover:opacity-70 md:text-4xl"
@@ -62,7 +75,7 @@ export function Navbar() {
           JU Learning
         </Link>
 
-        {/* Desktop nav */}
+        {/* Desktop nav — right side */}
         <nav className="hidden items-center gap-0 lg:flex">
           {NAV_ITEMS.map((item) => (
             <Link
@@ -76,21 +89,11 @@ export function Navbar() {
           ))}
         </nav>
 
-        {/* Mobile hamburger */}
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="flex lg:hidden"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-        >
-          {menuOpen ? (
-            <X className="h-6 w-6 text-foreground" />
-          ) : (
-            <Menu className="h-6 w-6 text-foreground" />
-          )}
-        </button>
+        {/* Spacer for mobile to keep logo centered */}
+        <div className="w-8 lg:hidden" />
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu — full width, below header */}
       {menuOpen && (
         <div className="border-t border-border/10 lg:hidden">
           <nav className="mx-auto flex max-w-6xl flex-col px-6 py-4">
@@ -99,7 +102,7 @@ export function Navbar() {
                 key={item.label}
                 href={item.href}
                 onClick={closeMenu}
-                className={`flex items-center gap-2 py-4 text-xl font-bold transition-opacity hover:opacity-60 ${
+                className={`flex items-center gap-2 py-5 text-2xl font-bold transition-opacity hover:opacity-60 ${
                   pathname.startsWith(item.href)
                     ? "text-brand"
                     : "text-foreground"
@@ -116,7 +119,7 @@ export function Navbar() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={closeMenu}
-                className="text-xl font-bold text-foreground transition-opacity hover:opacity-60"
+                className="text-2xl font-bold text-foreground transition-opacity hover:opacity-60"
               >
                 GitHub ↗
               </a>
@@ -127,4 +130,3 @@ export function Navbar() {
     </header>
   );
 }
-
