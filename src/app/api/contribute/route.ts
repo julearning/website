@@ -50,6 +50,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
+  // Lightweight reachability check on the Drive URL
+  const thumbnailId = body.url.match(/(?:\/d\/|id=)([\w-]{25,})/)?.[1];
+  if (thumbnailId) {
+    const thumbUrl = `https://drive.google.com/thumbnail?id=${thumbnailId}&sz=w100`;
+    try {
+      const check = await fetch(thumbUrl, { method: "HEAD", signal: AbortSignal.timeout(5000) });
+      if (!check.ok && check.status !== 429) {
+        // 429 = rate limited by Google, pass through
+        return NextResponse.json(
+          { error: "Drive link doesn't appear accessible. Make sure the file is shared with 'Anyone with the link'." },
+          { status: 400 },
+        );
+      }
+    } catch {
+      // Network errors are OK — Drive may block server-side fetches
+    }
+  }
+
   const branchSlug = body.branch.toLowerCase().replace(/[^a-z0-9]/g, "");
   const semesterDir = `semester-${body.semester}`;
   const subjectSlug = body.subject
