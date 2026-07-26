@@ -13,10 +13,10 @@ function singleWordScore(doc: {
   type?: DocType;
   tags?: string[];
 }, word: string): number {
-  const title = doc.title.toLowerCase();
-  const subject = doc.subject.toLowerCase();
+  const title = (doc.title || "").toLowerCase();
+  const subject = (doc.subject || "").toLowerCase();
   const description = (doc.description || "").toLowerCase();
-  const branch = doc.branch.toLowerCase();
+  const branch = (doc.branch || "").toLowerCase();
   const docType = doc.type || doc.tags?.[0] || "";
 
   // Exact title match
@@ -79,7 +79,7 @@ export function searchDocuments(
   if (semester) filtered = filtered.filter((d) => d.semester === semester);
   if (subject) {
     filtered = filtered.filter(
-      (d) => d.subject.toLowerCase() === subject.toLowerCase(),
+      (d) => (d.subject || "").toLowerCase() === (subject || "").toLowerCase(),
     );
   }
   if (types.length > 0) {

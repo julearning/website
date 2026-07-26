@@ -50,8 +50,8 @@ export default function Home() {
   const topContributors = allContributors.slice(0, 8);
 
   const branches = getUniqueBranches();
-  const allSemesters = [...new Set(documents.map((d) => d.semester))].sort((a, b) => a - b);
-  const allSubjects = [...new Set(documents.map((d) => d.subject))].sort();
+  const allSemesters = [...new Set(documents.map((d) => d.semester).filter((s): s is number => s != null))].sort((a, b) => a - b);
+  const allSubjects = [...new Set(documents.map((d) => d.subject).filter(Boolean))].sort();
   const topSubjects = allSubjects.slice(0, 12);
 
   function formatDate(dateStr: string | undefined) {
@@ -279,8 +279,8 @@ export default function Home() {
             {topSubjects.map((subject) => {
               const docCount = documents.filter((d) => d.subject === subject).length;
               const firstDoc = documents.find((d) => d.subject === subject);
-              const branchSlug = firstDoc ? firstDoc.branch.toLowerCase() : "cse";
-              const sem = firstDoc ? firstDoc.semester : 1;
+              const branchSlug = firstDoc?.branch?.toLowerCase() || "cse";
+              const sem = firstDoc?.semester ?? 1;
               return (
                 <Link
                   key={subject}

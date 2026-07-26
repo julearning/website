@@ -137,9 +137,10 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
       }
     }
     for (const doc of documents) {
-      const lower = doc.subject.toLowerCase();
+      const subjectStr = doc.subject || "";
+      const lower = subjectStr.toLowerCase();
       if (lower.startsWith(q) && lower.length > q.length) {
-        return doc.subject.slice(query.trim().length);
+        return subjectStr.slice(query.trim().length);
       }
     }
     return "";

@@ -27,8 +27,8 @@ export default function SubjectsPage() {
     }
     const entry = subjectMap.get(doc.subject)!;
     entry.docCount++;
-    entry.branches.add(doc.branch);
-    entry.semesters.add(doc.semester);
+    if (doc.branch) entry.branches.add(doc.branch);
+    if (doc.semester != null) entry.semesters.add(doc.semester);
   }
 
   return (
@@ -45,8 +45,9 @@ export default function SubjectsPage() {
               : `Semesters ${Math.min(...info.semesters)}–${Math.max(...info.semesters)}`;
 
           // Link to the subject's page — use the first branch that offers it
-          const firstBranch = [...info.branches].sort()[0].toLowerCase();
-          const firstSem = Math.min(...info.semesters);
+          const sortedBranches = [...info.branches].filter(Boolean).sort();
+          const firstBranch = sortedBranches[0]?.toLowerCase() || "cse";
+          const firstSem = info.semesters.size > 0 ? Math.min(...info.semesters) : 1;
 
           return (
             <Link

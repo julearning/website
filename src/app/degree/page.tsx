@@ -20,8 +20,8 @@ export const metadata: Metadata = {
 export default function DegreePage() {
   const totalDocs = documents.length;
   const branches = getUniqueBranches();
-  const allSems = [...new Set(documents.map((d) => d.semester))].sort((a, b) => a - b);
-  const allSubjects = [...new Set(documents.map((d) => d.subject))].sort();
+  const allSems = [...new Set(documents.map((d) => d.semester).filter((s): s is number => s != null))].sort((a, b) => a - b);
+  const allSubjects = [...new Set(documents.map((d) => d.subject).filter(Boolean))].sort();
 
   return (
     <main className="mx-auto max-w-6xl px-6 pb-16">
