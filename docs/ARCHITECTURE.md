@@ -2,243 +2,349 @@
 
 ## Overview
 
-JU Learning is a static, open-source platform for sharing university study materials. It follows a **zero-database, zero-backend** philosophy — everything is built from flat JSON files at compile time and served as static assets via CDN.
+JU Learning is a static, open-source platform for sharing university study materials. It follows a **zero-database, zero-backend** philosophy — everything is built from flat JSON files at build time and served as static assets via CDN.
 
-## Architecture
+**Live site:** [julearning.vercel.app](https://julearning.vercel.app)  
+**Organization:** [github.com/julearning](https://github.com/julearning)
+
+---
+
+## Repository structure
+
+Three repositories under the `julearning` GitHub organization:
+
+| Repo | Purpose |
+|------|---------|
+| `website` | Next.js frontend — the main website (private) |
+| `metadata` | All document metadata as JSON files (public) |
+| `.github` | Organization profile README (public) |
+
+---
+
+## Architecture flow
 
 ```
-Google Drive / Cloud Storage (any provider)
+Contributor stores files in Google Drive (or any provider)
         │
-        │ stores PDFs in human-friendly folders
-        │
-        │   JU Learning/
-        │     B.Tech/
-        │       CSE/
-        │         Semester 4/
-        │           DBMS/
-        │             Notes/
-        │             PYQs/
-        │             Assignments/
+        │ Folder must be public: Anyone with link → Viewer
         ▼
 
-GitHub Repository (julearning)
-    metadata/*.json              ← Document metadata (PR-able JSON)
-    .github/workflows/validate   ← Auto-validate PRs
-
-        │
-        │ Pull Request → CI Validation → Merge to main
+Contributor uses Drive automation tool at /automation/drive
+        │ 1. Pastes file list from Google Drive Link Getter extension
+        │ 2. Fills in default values (branch, semester, subject, etc.)
+        │ 3. Downloads generated JSON files
         ▼
 
-Next.js Static Build (SSG)
-    ├── Reads all metadata JSON files
-    ├── Generates FlexSearch index
-    └── Pre-renders all pages
+Pull Request to github.com/julearning/metadata
+        │
+        │ GitHub Action validates: JSON format, required fields, branch/semester/URL values
+        ▼
 
+Maintainer reviews and merges PR
         │
         ▼
 
-Vercel (CDN)
-    └── Students search, filter, and download
+Website build (triggered by Vercel on merge)
+        │ 1. Clones the metadata repo
+        │ 2. Reads all JSON files
+        │ 3. Flattens into a single documents array
+        │ 4. Generates 289+ static pages
+        ▼
+
+Vercel CDN — Students search, filter, and download
 ```
 
-## Key Decisions
+---
 
-### 1. No Database
-
-Metadata lives as JSON files in the GitHub repository. This eliminates:
-- Database hosting costs
-- Authentication systems
-- Admin dashboards
-- API maintenance
-
-Content changes happen through Pull Requests, which are validated by GitHub Actions before merge.
-
-### 2. Google Drive as Storage Backend
-
-Files are stored in Google Drive (or any public cloud storage) for:
-- **Unlimited bandwidth** — Google handles CDN and streaming
-- **Human-friendly folders** — students can browse Drive directly
-- **Familiar UI** — non-technical users already understand Drive
-- **Multi-provider support** — metadata only stores a URL, so any storage works
-
-### 3. No Collections Entity
-
-Documents are flat — they have tags and attributes. The UI derives "collections" (like "All DBMS Notes" or "Semester 4 PYQs") as filtered views at runtime. No separate collection model to maintain.
-
-### 4. PR-Based Contribution Workflow
-
-```yaml
-Contributor:
-  1. Forks the repository
-  2. Adds a JSON file to metadata/
-  3. Opens a Pull Request
-    
-GitHub Actions:
-  1. Validates JSON schema
-  2. Checks all required fields
-  3. Verifies URL is accessible
-  4. Checks for duplicate IDs
-  5. Blocks merge on failure
-
-Maintainer:
-  1. Reviews the content
-  2. Merges the PR
-  3. Site auto-rebuilds on Vercel
-```
-
-## Data Model
-
-```typescript
-interface Document {
-  id: string;           // Unique identifier
-  title: string;
-  description: string;
-  url: string;          // Direct download link
-  fileType: "pdf" | "docx" | "pptx" | "image";
-  fileSize: number;     // bytes
-
-  // Taxonomy
-  branch: "CSE" | "ECE" | "EE" | "ME" | "CE";
-  degree: "B.Tech";
-  semester: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-  subject: string;
-  topic?: string;
-
-  // Classification
-  tags: Array<
-    "notes" | "pyq" | "assignment" | "lab-manual" |
-    "syllabus" | "handwritten" | "typed" | "reference-book" |
-    "project-report"
-  >;
-
-  // Metadata
-  contributor: string;   // GitHub username
-  uploadedAt: string;    // ISO 8601
-  verified: boolean;
-  downloads?: number;
-}
-```
-
-## Tech Stack
+## Tech stack
 
 | Layer | Choice | Rationale |
 |-------|--------|-----------|
 | Framework | Next.js 16 (App Router) | SSG, file-based routing, edge CDN |
 | Language | TypeScript | Type safety |
 | Styling | Tailwind CSS v4 | Utility-first, ultra-lightweight |
-| Font | Geist (Vercel) | Modern, technical, fast-loading |
-| Search | FlexSearch | Client-side, <10KB, instant fuzzy search |
-| Icons | Lucide React | Lightweight, consistent icon set |
-| Hosting | Vercel | Automatic ISR, CDN, free tier |
-| Storage | Google Drive (or any) | Public URL-based, provider-agnostic |
-| CI/CD | GitHub Actions | JSON validation, link checking |
+| UI library | shadcn/ui primitives | Unstyled, composable components |
+| Font | Geist + Plus Jakarta Sans | Modern, readable, fast-loading |
+| Search | Fuse.js v7 | Client-side fuzzy search, no API calls |
+| Icons | Lucide React (minimal use) | Lightweight |
+| Hosting | Vercel (free tier) | Automatic static deployment |
+| Storage | Any provider (Google Drive, OneDrive, Dropbox) | Only stores links, not files |
+| CI/CD | GitHub Actions | JSON validation on PRs |
 
-## Design Philosophy
-
-### Visual Direction
-
-The design is inspired by Google Search and Linear — borderless, typography-driven, extremely minimal.
-
-**Principles:**
-- **One purpose per page** — the home page is just a search bar
-- **Typography is the UI** — hierarchy through weight and color, not boxes
-- **Whitespace as separator** — space replaces borders and cards
-- **Keyboard-first** — ⌘K for search, arrows to navigate, Esc to close
-- **Monochromatic + one accent** — zinc grays + deep blue accent
-
-**Color Palette:**
-- Background: `#ffffff`
-- Text: `#0a0a0b` (zinc-950)
-- Secondary text: `#71717a` (zinc-500)
-- Accent: `#2563eb` (blue-600)
-- Subtle surfaces: `#fafafa` (zinc-50)
-- Borders: `#e4e4e7` (zinc-200)
-
-### Component Tree
-
-```
-RootLayout
-├── Header (sticky, borderless)
-│   ├── Logo + "JU Learning"
-│   └── Nav (Browse, About, GitHub)
-├── Page Content
-│   ├── Home (Hero Search)
-│   │   ├── SearchBar
-│   │   ├── FilterDropdowns
-│   │   ├── TagFilter
-│   │   ├── FilterPills
-│   │   └── SearchResults
-│   │       └── DocumentCard[]
-│   ├── Search Modal (⌘K)
-│   │   ├── Search Input
-│   │   ├── Quick Filters
-│   │   └── Results List
-│   ├── Browse (Branch Grid)
-│   │   └── Branch → Semester → Subject
-│   ├── Search Results Page
-│   └── About Page
-└── Footer
-```
+---
 
 ## Routes
 
-| Route | Purpose |
+### Top-level nav items (all have search + header)
+
+| Route | Content |
 |-------|---------|
-| `/` | Home — hero search bar |
-| `/search?branch=&semester=&subject=` | Search results with filters |
-| `/browse` | Browse all branches |
-| `/browse/[branch]` | Browse branch → semesters → subjects |
-| `/about` | About the project |
+| `/` | Home — hero search + browse sections (PYQs, Handwritten, Digital Notes, Contributors, Recent, Branches, Semesters, Subjects) |
+| `/pyq` | Past exam papers — pre-filtered to `pyq` tag, auto-shows all PYQs on load |
+| `/handwritten` | Scanned handwritten notes — pre-filtered to `handwritten` tag |
+| `/digital-notes` | Clean typed notes — pre-filtered to `typed` tag |
+| `/branches` | All 5 engineering branches with document counts |
+| `/subjects` | All 166+ subjects listed alphabetically |
+| `/degree` | B.Tech overview across all branches |
 
-## Search Architecture
+### Browse routes (deep navigation)
 
-- **FlexSearch** runs entirely on the client
-- Index is built at build time from the metadata JSON
-- Search fields weighted by importance: title (10x) > subject (5x) > topic (4x) > description (2x)
-- Filters applied before search for performance
-- Keyboard navigation (↑↓) and result highlighting
+| Route | Content |
+|-------|---------|
+| `/branches/[branch]` | Semesters for a specific branch (e.g., `/branches/cse`) |
+| `/semesters/[branch]/[semester]` | Subjects for a branch + semester |
+| `/subjects/[branch]/[semester]/[subject]` | Documents for a specific subject |
 
-## GitHub Integration
+### Other routes
 
-### Broken Link Reporting
+| Route | Content |
+|-------|---------|
+| `/terms` | Terms of use |
+| `/privacy` | Privacy policy |
+| `/automation/drive` | Secret route — bulk JSON generator from Google Drive links |
 
-Documents display a flag icon on hover. Clicking it opens a pre-filled GitHub Issue:
+---
+
+## Component architecture
 
 ```
-Title: "[Broken Link] DBMS Complete Notes"
-Body: Includes document ID, URL, and reason checkboxes
+RootLayout (server component)
+├── Navbar (client) — appears on ALL pages via layout.tsx
+│   ├── Logo: "JU Learning" (text-3xl md:text-4xl extrabold)
+│   └── 6 nav items: PYQs, Handwritten, Digital Notes, Branches, Subjects, Degree
+│       └── All link to real routes with active state highlighting
+│
+├── {page content}
+│
+└── Footer (server)
 ```
 
-### Future: PR Validation Workflow
+### SearchHero component (client component, reusable)
 
-```yaml
-name: Validate Content
-on: pull_request
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate JSON
-        run: npx ajv validate -s schema.json -d "metadata/*.json"
-      - name: Check URLs
-        run: npx broken-link-checker metadata/
-      - name: Check duplicates
-        run: node scripts/check-duplicates.mjs
+The core search interface used on every page. Props:
+- `title` — page heading (default: "JU Learning")
+- `subtitle` — page description (default: "Every branch. Every semester. Every note.")
+- `defaultTags` — pre-filter by tags (used on category pages)
+- `searchOnMount` — auto-trigger search on load (used on category pages)
+
+Internal state:
+- Query, results, loading, sort, active tags
+- 3-second debounce for auto-search
+- Tab autocomplete (matches titles/subjects)
+- Enter to search immediately
+- Skeleton loading state while searching
+
+### Page layout patterns
+
+**Home page (`/`):**
+```
+<Navbar /> (from layout)
+<SearchHero />   // Full hero with search
+<Browse sections>  // PYQs, Handwritten, Digital Notes, Contributors, Recent, Branches, Semesters, Subjects
+<Footer /> (from layout)
 ```
 
-## Performance Goals
+**Category pages (`/pyq`, `/handwritten`, `/digital-notes`):**
+```
+<Navbar />
+<SearchHero title="..." subtitle="..." defaultTags={["..."]} searchOnMount />
+<Footer />
+```
+
+**Browse pages (`/branches`, `/subjects`, `/degree`):**
+```
+<Navbar />
+<SearchHero title="..." subtitle="..." />
+<Page-specific content>  // Branch cards, subject cards, etc.
+<Footer />
+```
+
+---
+
+## Design system
+
+### Visual principles
+
+- **Borderless** — no borders, no border-radius, no shadows
+- **Typography-driven** — hierarchy through weight and size, not boxes
+- **White background** — pure white throughout
+- **Single accent color** — `#BF00FF` (brand purple)
+- **Hover state** — cards invert: background becomes brand purple, text becomes white, no borders on hover either
+
+### Typography
+
+| Element | Size | Weight |
+|---------|------|--------|
+| Logo | text-3xl md:text-4xl | Extrabold (800) |
+| Nav items | text-xl | Semibold (600) |
+| Hero heading | text-5xl sm:text-7xl lg:text-8xl | Bold (700) |
+| Section headings | text-2xl | Bold (700) |
+| Card title | text-sm | Semibold (600) |
+| Body text | text-sm | Normal (400) |
+
+### Colors
+
+```
+background:     #ffffff (white)
+foreground:     #0a0a0b (near black)
+muted:          #71717a (zinc-500)
+border:         #e4e4e7 (zinc-200)
+accent:         #f4f4f5 (zinc-100)
+brand:          #BF00FF (purple)
+```
+
+### Interactive patterns
+
+- All cards: `bg-white` → `hover:bg-brand` (text inverts to white)
+- All links: no underline by default, `hover:text-foreground` transition
+- Search input: `ring-1 ring-border/30` → `focus-within:ring-2 focus-within:ring-brand/20`
+- No border-radius anywhere (`rounded-none`)
+
+---
+
+## Data model
+
+### Metadata JSON format (one file per document)
+
+```json
+{
+  "title": "DBMS Unit 1 Notes",
+  "url": "https://drive.google.com/file/d/FILE_ID/view",
+  "tags": ["notes", "typed"],
+  "subject": "Database Management Systems",
+  "branch": "CSE",
+  "semester": 4,
+  "section": "section-a",
+  "chapters": ["Introduction to DBMS", "ER Model", "Relational Model"],
+  "fileSize": 2048576,
+  "contributor": "your-github-username",
+  "uploadedAt": "2026-07-25",
+  "description": "Complete notes covering Unit 1.",
+  "language": "English",
+  "pages": 42
+}
+```
+
+### Fields
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `title` | Yes | Document title |
+| `url` | Yes | Public link (any provider — Google Drive, OneDrive, Dropbox, etc.) |
+| `tags` | Yes | `notes`, `pyq`, `handwritten`, `typed`, `assignment`, `lab-manual`, `syllabus`, `reference-book`, `project-report` |
+| `subject` | Yes | Full subject name |
+| `branch` | Yes | `CSE`, `ECE`, `EE`, `ME`, `CE` |
+| `semester` | Yes | 1-8 |
+| `section` | Yes | `section-a`, `section-b`, `mixed` |
+| `fileSize` | Yes | In bytes |
+| `chapters` | No | Array of chapter/topic names |
+| `contributor` | No | GitHub username |
+| `uploadedAt` | No | Date (ISO format) |
+| `description` | No | Brief description |
+| `language` | No | Any language — system is language-agnostic |
+| `pages` | No | Page count |
+
+---
+
+## Search
+
+- **Library:** Fuse.js v7 (client-side only)
+- **Scope:** Searches titles, subjects, descriptions, chapters, branches, and tags
+- **Scoring:** Weighted by field — exact title match scores highest
+- **Filters:** Branch, semester, subject, tags — applied before scoring
+- **Sort options:** Relevance (default), newest, oldest, name, size
+- **Auto-debounce:** Triggers 3 seconds after the user stops typing
+- **Autocomplete:** Tab to complete matches document titles or subjects
+- **Results per page:** 9 (paginated with `PaginatedGrid`)
+
+---
+
+## Storage philosophy
+
+The system is **storage-agnostic** — it only stores third-party links, not files.
+
+- Files can be hosted on any provider (Google Drive, OneDrive, Dropbox, etc.)
+- Contributors use their own storage — just make sure links are public
+- If a link breaks, anyone can submit a PR to update or remove it
+- Google Drive thumbnails are auto-generated from the file ID for preview
+
+---
+
+## Automation: Drive to JSON (`/automation/drive`)
+
+A secret route for bulk metadata generation:
+
+1. **Make folder public** — Create a Google Drive folder, set "Anyone with link → Viewer"
+2. **Get links** — Use the Google Drive Link Getter Chrome extension in List view
+3. **Paste** — Copy the tab-separated file list into the textarea
+4. **Generate** — Set defaults (branch, semester, subject, contributor, etc.), confirm, download JSON files
+5. **PR** — Clone metadata repo, drop JSON files into correct folder, open a pull request
+
+Supports: `/file/d/ID/view`, `/document/d/ID/edit`, `/spreadsheets/d/ID/edit`, `/presentation/d/ID/edit`. Auto-skips videos and images.
+
+---
+
+## Build process
+
+```bash
+npm run build
+```
+
+1. Prebuild script clones `github.com/julearning/metadata` into a temp directory
+2. Reads all JSON files from the metadata repo
+3. Flattens subject-level JSONs into a single documents array
+4. Next.js generates 289+ static pages from the data
+5. Output deployed to Vercel as static HTML
+
+No API calls at runtime. No database queries. No server-side logic.
+
+---
+
+## Key design decisions
+
+### Why no database?
+- Zero hosting costs
+- No authentication, no admin dashboard
+- Content changes through PRs (validated by CI)
+- Anyone can contribute via GitHub
+
+### Why no collections?
+- Documents are flat with tags and attributes
+- "Collections" are derived as filtered views at runtime
+- No separate collection model to maintain
+
+### Why PR-based contributions?
+- Scalable — anyone can fork, add JSON, submit PR
+- Transparent — all changes are reviewed
+- Automated validation catches mistakes
+- Contributors get GitHub credit
+
+### Why Fuse.js over FlexSearch?
+- Simpler API, well-documented
+- Better TypeScript support
+- Sufficient for the dataset size (460 documents)
+
+### Why /automation/drive is a secret route?
+- Not linked from the Navbar to avoid confusion
+- Only accessible by direct URL — for contributors who need it
+- Reduces surface area for casual users who don't need it
+
+---
+
+## Current stats
+
+- **Documents:** 460+
+- **Branches:** 5 (CSE, ECE, EE, ME, CE)
+- **Semesters:** 1-8
+- **Subjects:** 166+
+- **Static pages:** 289+ (generated at build time)
+- **Contributors:** 2+
+
+---
+
+## Performance goals
 
 - Lighthouse score: 95+ on all metrics
-- First Contentful Paint: < 1s
-- Search response: < 50ms (client-side)
-- Bundle size: < 100KB JS (target)
 - Zero external API calls at runtime
-
-## Future Considerations
-
-- **Dark mode** — CSS variables make this trivial to add
-- **Document preview** — PDF.js viewer for inline previews
-- **Download count tracking** — lightweight analytics via Vercel Analytics
-- **Sitemap generation** — for SEO on browse pages
-- **RSS/Atom feed** — for new document notifications
+- Search response: instant (client-side Fuse.js)
+- Bundle size: minimal (Next.js SSG, no heavy dependencies)
