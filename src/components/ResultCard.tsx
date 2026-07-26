@@ -3,10 +3,12 @@
 import { useState } from "react";
 import type { SearchResult } from "@/lib/search";
 import { formatFileSize, getThumbnailUrl, TYPE_LABELS } from "@/lib/types";
-import { getReportUrl } from "@/lib/report";
+import { reportBrokenLink } from "@/lib/report";
 
 export function ResultCard({ result }: { result: SearchResult }) {
   const [imgFailed, setImgFailed] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reportMsg, setReportMsg] = useState("");
   const thumbUrl = getThumbnailUrl(result.doc.url);
   const showThumb = thumbUrl && !imgFailed;
   const { doc } = result;
@@ -97,15 +99,25 @@ export function ResultCard({ result }: { result: SearchResult }) {
             </span>
           </a>
         )}
-        <a
-          href={getReportUrl(doc)}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="block px-4 py-1.5 text-[10px] text-muted-foreground/40 opacity-0 transition-all duration-300 hover:text-foreground group-hover:opacity-100 group-hover:text-white/60"
+        <button
+          onClick={async (e) => {
+            e.stopPropagation();
+            if (reporting) return;
+            setReporting(true);
+            setReportMsg("");
+            try {
+              const { issueUrl } = await reportBrokenLink(doc);
+              setReportMsg("Reported!");
+              setTimeout(() => window.open(issueUrl, "_blank"), 300);
+            } catch {
+              setReportMsg("Failed — try again");
+            }
+            setTimeout(() => { setReporting(false); setReportMsg(""); }, 3000);
+          }}
+          className="block w-full px-4 py-1.5 text-[10px] text-left text-muted-foreground/40 opacity-0 transition-all duration-300 hover:text-foreground group-hover:opacity-100 group-hover:text-white/60"
         >
-          Report broken link
-        </a>
+          {reportMsg || (reporting ? "Reporting..." : "Report broken link")}
+        </button>
       </div>
     </div>
   );

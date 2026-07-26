@@ -11,6 +11,8 @@ const NAV_ITEMS: Array<{ href: string; label: string; icon?: React.ReactNode }> 
   { href: "/contributors", label: "Contributors", icon: <Users className="h-4 w-4" /> },
 ];
 
+// Note: /automation/drive was merged into /contribute and deleted
+
 export function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);

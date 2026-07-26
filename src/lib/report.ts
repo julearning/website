@@ -1,25 +1,26 @@
 import type { Document } from "./types";
 
 /**
- * Generates a pre-filled GitHub issue URL for reporting a broken link
- * in the julearning/metadata repository.
+ * Reports a broken link to the julearning/metadata repo via the API.
+ * Returns the issue URL on success, or throws on failure.
  */
-export function getReportUrl(doc: Document): string {
-  const title = encodeURIComponent(`Broken link: ${doc.title}`);
-  const body = encodeURIComponent(
-    `## Broken Link Report\n\n` +
-    `**Document:** ${doc.title}\n` +
-    `**URL:** ${doc.url}\n` +
-    `**Branch:** ${doc.branch}\n` +
-    `**Semester:** ${doc.semester}\n` +
-    `**Subject:** ${doc.subject}\n` +
-    `**Section:** ${doc.section || "N/A"}\n\n` +
-    `**Issue:** The link appears to be broken.\n` +
-    `- [ ] 404 Not Found\n` +
-    `- [ ] Permission denied\n` +
-    `- [ ] Wrong file\n` +
-    `- [ ] Other (describe below)\n\n` +
-    `**Additional context:**\n`
-  );
-  return `https://github.com/julearning/metadata/issues/new?title=${title}&body=${body}&labels=broken-link`;
+export async function reportBrokenLink(doc: Document): Promise<{ issueUrl: string; issueNumber: number }> {
+  const res = await fetch("/api/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: doc.title,
+      url: doc.url,
+      branch: doc.branch || undefined,
+      semester: doc.semester || undefined,
+      subject: doc.subject || undefined,
+      contributor: doc.contributor || undefined,
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to report broken link");
+  }
+  return { issueUrl: data.issueUrl, issueNumber: data.issueNumber };
 }

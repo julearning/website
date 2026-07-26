@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { documents } from "@/data/documents";
 import type { Document } from "@/lib/types";
 import { getThumbnailUrl } from "@/lib/types";
-import { getReportUrl } from "@/lib/report";
+import { reportBrokenLink } from "@/lib/report";
 import { SearchHero } from "@/components/SearchHero";
 
 const CATEGORY_SECTIONS = [
@@ -47,6 +47,32 @@ export default function Home() {
     } catch {
       return "";
     }
+  }
+
+  function ReportButton({ doc }: { doc: Document }) {
+    const [reporting, setReporting] = useState(false);
+    const [reportMsg, setReportMsg] = useState("");
+    return (
+      <button
+        onClick={async (e) => {
+          e.stopPropagation();
+          if (reporting) return;
+          setReporting(true);
+          setReportMsg("");
+          try {
+            const { issueUrl } = await reportBrokenLink(doc);
+            setReportMsg("Reported!");
+            setTimeout(() => window.open(issueUrl, "_blank"), 300);
+          } catch {
+            setReportMsg("Failed");
+          }
+          setTimeout(() => { setReporting(false); setReportMsg(""); }, 3000);
+        }}
+        className="block w-full px-4 py-1.5 text-[10px] text-left text-muted-foreground/40 opacity-0 transition-all duration-300 hover:text-foreground group-hover:opacity-100 group-hover:text-white/60"
+      >
+        {reportMsg || (reporting ? "Reporting..." : "Report broken link")}
+      </button>
+    );
   }
 
   function CategoryCard({ doc }: { doc: Document }) {
@@ -112,15 +138,7 @@ export default function Home() {
               </span>
             </a>
           )}
-          <a
-            href={getReportUrl(doc)}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="block px-4 py-1.5 text-[10px] text-muted-foreground/40 opacity-0 transition-all duration-300 hover:text-foreground group-hover:opacity-100 group-hover:text-white/60"
-          >
-            Report broken link
-          </a>
+          <ReportButton doc={doc} />
         </div>
       </div>
     );

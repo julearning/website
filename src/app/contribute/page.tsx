@@ -2,8 +2,17 @@
 
 import { useState, useMemo, useRef } from "react";
 import { documents } from "@/data/documents";
+import type { DocType } from "@/lib/types";
+import { TYPE_LABELS } from "@/lib/types";
 
-const TYPES = [
+/* ------------------------------------------------------------------ */
+/*  Shared constants                                                  */
+/* ------------------------------------------------------------------ */
+
+const DRIVE_PATTERN = /^(https?:\/\/)?(drive\.google\.com\/(file|document|presentation|spreadsheets)\/d\/|docs\.google\.com\/(document|presentation|spreadsheets)\/d\/)/i;
+const CUSTOM_OPTION = "__custom__";
+
+const TYPES: Array<{ id: DocType | string; label: string }> = [
   { id: "handwritten", label: "Handwritten Notes" },
   { id: "digital", label: "Digital Notes" },
   { id: "pyq", label: "Previous Year Questions" },
@@ -14,42 +23,41 @@ const TYPES = [
   { id: "mixed", label: "Mixed / Other" },
 ];
 
-/** Pattern for Google Drive file/doc links */
-const DRIVE_PATTERN = /^(https?:\/\/)?(drive\.google\.com\/(file|document|presentation|spreadsheets)\/d\/|docs\.google\.com\/(document|presentation|spreadsheets)\/d\/)/i;
+/* ------------------------------------------------------------------ */
+/*  JU document helpers                                               */
+/* ------------------------------------------------------------------ */
 
-/** Only JU documents for the branch/semester/subject dropdowns */
 const juDocs = documents.filter((d) => d.source === "jammu-university");
 
-/** "Add custom..." sentinel value */
-const CUSTOM_OPTION = "__custom__";
+function getBranches() { return [...new Set(juDocs.map(d => d.branch).filter(Boolean))].sort() as string[]; }
+function getSemesters(branch: string) {
+  return [...new Set(juDocs.filter(d => d.branch === branch).map(d => d.semester))].filter((s): s is number => s != null).sort((a, b) => a - b);
+}
+function getSubjects(branch: string, semester: number) {
+  return [...new Set(juDocs.filter(d => d.branch === branch && d.semester === semester).map(d => d.subject).filter(Boolean))].sort();
+}
 
-/**
- * Validates a GitHub username by calling the public API.
- * Returns { valid, message }.
- */
+/* ------------------------------------------------------------------ */
+/*  GitHub + Drive validation                                         */
+/* ------------------------------------------------------------------ */
+
 async function validateGithub(username: string): Promise<{ valid: boolean; message: string }> {
   if (!username.trim()) return { valid: false, message: "Required" };
-  if (!/^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i.test(username.trim())) {
-    return { valid: false, message: "Not a valid GitHub username format" };
-  }
+  if (!/^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i.test(username.trim())) return { valid: false, message: "Invalid format" };
   try {
     const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username.trim())}`);
     if (res.status === 200) return { valid: true, message: "Verified" };
-    if (res.status === 403) return { valid: true, message: "Rate limited — couldn't verify" }; // pass through
+    if (res.status === 403) return { valid: true, message: "Rate limited — couldn't verify" };
     return { valid: false, message: "GitHub user not found" };
   } catch {
-    return { valid: true, message: "Couldn't verify (offline?)" }; // pass through on network error
+    return { valid: true, message: "Couldn't verify (offline?)" };
   }
 }
 
-/**
- * Checks if a Drive URL actually points to a real file by trying to load its thumbnail.
- * Uses Image() to avoid CORS issues with fetch.
- */
 async function checkDriveUrl(url: string): Promise<{ exists: boolean; message: string }> {
   if (!url.trim()) return { exists: false, message: "" };
   const id = url.match(/(?:\/d\/|id=)([\w-]{25,})/)?.[1];
-  if (!id) return { exists: false, message: "Could not extract file ID from URL" };
+  if (!id) return { exists: false, message: "Could not extract file ID" };
   try {
     const exists = await new Promise<boolean>((resolve) => {
       const img = new Image();
@@ -59,403 +67,248 @@ async function checkDriveUrl(url: string): Promise<{ exists: boolean; message: s
       img.src = `https://drive.google.com/thumbnail?id=${id}&sz=w50`;
     });
     if (exists) return { exists: true, message: "Drive file reachable" };
-    return { exists: false, message: "File not found or not accessible on Drive" };
+    return { exists: false, message: "File not found or not accessible" };
   } catch {
     return { exists: false, message: "Could not verify — proceed anyway" };
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Bulk-parse helpers (from old automation/drive)                    */
+/* ------------------------------------------------------------------ */
+
+interface ParsedFile { fileName: string; url: string; fileId: string; googleType: string; ext: string; }
+
+function parseLink(line: string): ParsedFile | null {
+  const trimmed = line.trim(); if (!trimmed) return null;
+  const parts = trimmed.split("\t");
+  let fileName = parts[0]?.trim() || ""; let url = parts[1]?.trim() || "";
+  if (!url) { const si = trimmed.lastIndexOf("http"); if (si > 0) { fileName = trimmed.slice(0, si).trim(); url = trimmed.slice(si).trim(); } else return null; }
+  const fm = url.match(/\/file\/d\/([^/]+)\//); const dm = url.match(/\/document\/d\/([^/]+)\//);
+  const sm = url.match(/\/spreadsheets\/d\/([^/]+)\//); const pm = url.match(/\/presentation\/d\/([^/]+)\//);
+  const fileId = (fm || dm || sm || pm)?.[1]; if (!fileId) return null;
+  const gt = fm ? "file" : dm ? "document" : sm ? "spreadsheet" : pm ? "presentation" : "unknown";
+  return { fileName, url, fileId, googleType: gt, ext: fileName.includes(".") ? fileName.split(".").pop()!.toLowerCase() : "" };
+}
+
+function detectTypeFromName(name: string): string {
+  const l = name.toLowerCase();
+  if (l.includes("pyq") || l.includes("past year") || l.includes("question paper")) return "pyq";
+  if (l.includes("handwritten") || l.includes("hand written")) return "handwritten";
+  if (l.includes("assignment")) return "assignment";
+  if (l.includes("lab") || l.includes("manual") || l.includes("practical")) return "lab-manual";
+  if (l.includes("syllabus")) return "syllabus";
+  if (l.includes("reference") || l.includes("book")) return "reference-book";
+  return "";
+}
+
+function sanitizeSlug(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
+}
+
+const MEDIA_EXTS = new Set(["png","jpg","jpeg","gif","webp","svg","ico","mp4","mov","avi","mkv","webm"]);
+
+interface BulkRow { id: number; title: string; url: string; detectedType: string; subject: string; }
+
+let rowCounter = 0;
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
+
 export default function ContributePage() {
-  // Field values
-  const [branch, setBranch] = useState("");
-  const [customBranch, setCustomBranch] = useState("");
-  const [semester, setSemester] = useState<number | "">("");
-  const [customSemester, setCustomSemester] = useState("");
-  const [subject, setSubject] = useState("");
-  const [customSubject, setCustomSubject] = useState("");
-  const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
-  const [docType, setDocType] = useState("mixed");
-  const [contributor, setContributor] = useState("");
+  const [mode, setMode] = useState<"single" | "bulk">("single");
 
-  // Mode toggles (dropdown vs custom text)
-  const [branchMode, setBranchMode] = useState<"dropdown" | "custom">("dropdown");
-  const [semesterMode, setSemesterMode] = useState<"dropdown" | "custom">("dropdown");
-  const [subjectMode, setSubjectMode] = useState<"dropdown" | "custom">("dropdown");
+  /* ---------- Single mode state ---------- */
+  const [branch, setBranch] = useState(""); const [customBranch, setCustomBranch] = useState("");
+  const [semester, setSemester] = useState<number | "">(""); const [customSemester, setCustomSemester] = useState("");
+  const [subject, setSubject] = useState(""); const [customSubject, setCustomSubject] = useState("");
+  const [title, setTitle] = useState(""); const [url, setUrl] = useState("");
+  const [docType, setDocType] = useState("mixed"); const [contributor, setContributor] = useState("");
+  const [bmode, setBmode] = useState<"dropdown"|"custom">("dropdown");
+  const [semode, setSemode] = useState<"dropdown"|"custom">("dropdown");
+  const [submode, setSubmode] = useState<"dropdown"|"custom">("dropdown");
+  const [urlStatus, setUrlStatus] = useState<"idle"|"checking"|"valid"|"invalid">("idle");
+  const [urlMsg, setUrlMsg] = useState(""); const [ghStatus, setGhStatus] = useState<"idle"|"checking"|"valid"|"invalid">("idle");
+  const [ghMsg, setGhMsg] = useState(""); const [touched, setTouched] = useState<Record<string,boolean>>({});
+  const urlTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const ghTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Validation state
-  const [urlStatus, setUrlStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
-  const [urlMessage, setUrlMessage] = useState("");
-  const [ghStatus, setGhStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
-  const [ghMessage, setGhMessage] = useState("");
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  /* ---------- Bulk mode state ---------- */
+  const [bulkStep, setBulkStep] = useState<"username"|"paste"|"table"|"done">("username");
+  const [bulkUser, setBulkUser] = useState(""); const [rawText, setRawText] = useState("");
+  const [rows, setRows] = useState<BulkRow[]>([]); const [submitting, setSubmitting] = useState(false);
+  const [bulkPrUrl, setBulkPrUrl] = useState(""); const [bulkError, setBulkError] = useState("");
 
-  // Submission state
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [prUrl, setPrUrl] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
+  /* ---------- Shared submission state ---------- */
+  const [status, setStatus] = useState<"idle"|"loading"|"success"|"error">("idle");
+  const [prUrl, setPrUrl] = useState(""); const [errorMsg, setErrorMsg] = useState("");
 
-  const ghTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Compute dropdown options from JU documents
-  const branches = useMemo(() => {
-    return [...new Set(juDocs.map((d) => d.branch).filter(Boolean))].sort() as string[];
-  }, []);
-
+  /* ---------- Single mode computed ---------- */
+  const branches = useMemo(getBranches, []);
   const semesters = useMemo(() => {
-    if (!branch && branchMode !== "custom") return [];
-    const activeBranch = branchMode === "custom" ? customBranch : branch;
-    if (!activeBranch) return [];
-    return [...new Set(juDocs.filter((d) => d.branch === activeBranch).map((d) => d.semester))].filter((s): s is number => s != null).sort((a, b) => a - b);
-  }, [branch, customBranch, branchMode]);
-
+    const ab = bmode === "custom" ? customBranch : branch; if (!ab) return [];
+    return getSemesters(ab);
+  }, [branch, customBranch, bmode]);
   const subjects = useMemo(() => {
-    const activeBranch = branchMode === "custom" ? customBranch : branch;
-    const activeSemester = semesterMode === "custom" ? Number(customSemester) : semester;
-    if (!activeBranch || !activeSemester) return [];
-    return [...new Set(juDocs.filter((d) => d.branch === activeBranch && d.semester === activeSemester).map((d) => d.subject).filter(Boolean))].sort();
-  }, [branch, customBranch, branchMode, semester, customSemester, semesterMode]);
+    const ab = bmode === "custom" ? customBranch : branch;
+    const as = semode === "custom" ? Number(customSemester) : semester;
+    if (!ab || !as) return []; return getSubjects(ab, as);
+  }, [branch, customBranch, bmode, semester, customSemester, semode]);
+  const resolvedBranch = bmode === "custom" ? customBranch.trim() : branch;
+  const resolvedSemester = semode === "custom" ? (customSemester ? Number(customSemester) : null) : (semester || null);
+  const resolvedSubject = submode === "custom" ? customSubject.trim() : subject;
 
-  // Resolved values for the final display & submit
-  const resolvedBranch = branchMode === "custom" ? customBranch.trim() : branch;
-  const resolvedSemester = semesterMode === "custom" ? (customSemester ? Number(customSemester) : null) : (semester || null);
-  const resolvedSubject = subjectMode === "custom" ? customSubject.trim() : subject;
+  /* ---------- Bulk mode computed ---------- */
+  const parsedFiles = useMemo(() => {
+    if (!rawText.trim()) return [];
+    return rawText.split("\n").map(parseLink).filter((f): f is ParsedFile => f !== null && !MEDIA_EXTS.has(f.ext));
+  }, [rawText]);
 
-  // Validate Drive URL on change with debounce + reachability check
-  const urlTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const parsedRows = useMemo(() => parsedFiles.map(f => {
+    const nameNoExt = f.fileName.replace(/\.[^/.]+$/, "").trim();
+    return { id: ++rowCounter, title: nameNoExt, url: f.url, detectedType: detectTypeFromName(f.fileName), subject: "" };
+  }), [parsedFiles]);
+
+  /* ---------- Single: URL change ---------- */
   function handleUrlChange(val: string) {
-    setUrl(val);
-    if (urlTimer.current) clearTimeout(urlTimer.current);
-    if (!val.trim()) {
-      setUrlStatus("idle");
-      setUrlMessage("");
-      return;
-    }
-    if (!DRIVE_PATTERN.test(val.trim())) {
-      setUrlStatus("invalid");
-      setUrlMessage("Must use a Google Drive or Docs link");
-      return;
-    }
-    setUrlStatus("checking");
-    setUrlMessage("Checking reachability...");
+    setUrl(val); if (urlTimer.current) clearTimeout(urlTimer.current);
+    if (!val.trim()) { setUrlStatus("idle"); setUrlMsg(""); return; }
+    if (!DRIVE_PATTERN.test(val.trim())) { setUrlStatus("invalid"); setUrlMsg("Must use a Google Drive link"); return; }
+    setUrlStatus("checking"); setUrlMsg("Checking reachability...");
     urlTimer.current = setTimeout(async () => {
-      const result = await checkDriveUrl(val);
-      setUrlStatus(result.exists ? "valid" : "invalid");
-      setUrlMessage(result.message);
+      const r = await checkDriveUrl(val); setUrlStatus(r.exists ? "valid" : "invalid"); setUrlMsg(r.message);
     }, 500);
   }
 
-  // Validate GitHub username on change with debounce
+  /* ---------- Single: GitHub validation ---------- */
   function handleGhChange(val: string) {
-    setContributor(val);
-    setGhStatus("idle");
-    setGhMessage("");
+    setContributor(val); setGhStatus("idle"); setGhMsg("");
     if (ghTimer.current) clearTimeout(ghTimer.current);
     if (!val.trim()) return;
     ghTimer.current = setTimeout(async () => {
-      setGhStatus("checking");
-      const result = await validateGithub(val);
-      setGhStatus(result.valid ? "valid" : "invalid");
-      setGhMessage(result.message);
+      setGhStatus("checking"); const r = await validateGithub(val);
+      setGhStatus(r.valid ? "valid" : "invalid"); setGhMsg(r.message);
     }, 600);
   }
 
-  // Preview JSON
-  const previewJson = useMemo(() => {
-    if (!title.trim() || !url.trim() || !resolvedBranch || !resolvedSemester || !resolvedSubject) return null;
-    return JSON.stringify([{
-      title: title.trim(),
-      url: url.trim(),
-      type: docType,
-      contributor: contributor.trim() || undefined,
-      uploadedAt: new Date().toISOString().split("T")[0],
-    }], null, 2);
-  }, [title, url, docType, contributor, resolvedBranch, resolvedSemester, resolvedSubject]);
+  /* ---------- Single: submit ---------- */
+  const singleValid = title.trim() && url.trim() && urlStatus !== "invalid" && resolvedBranch && resolvedSemester && resolvedSubject && ghStatus !== "invalid";
 
-  const canSubmit =
-    title.trim()
-    && url.trim()
-    && urlStatus !== "invalid"
-    && resolvedBranch
-    && resolvedSemester
-    && resolvedSubject
-    && ghStatus !== "invalid";
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!canSubmit) return;
-
-    setStatus("loading");
-    setErrorMsg("");
-
+  async function handleSingleSubmit(e: React.FormEvent) {
+    e.preventDefault(); if (!singleValid) return;
+    setStatus("loading"); setErrorMsg("");
     try {
       const res = await fetch("/api/contribute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          url: url.trim(),
-          type: docType,
-          contributor: contributor.trim() || "anonymous",
-          branch: resolvedBranch,
-          semester: Number(resolvedSemester),
-          subject: resolvedSubject,
-        }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode:"single", title: title.trim(), url: url.trim(), type: docType, contributor: contributor.trim() || "anonymous", branch: resolvedBranch, semester: Number(resolvedSemester), subject: resolvedSubject }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        setStatus("error");
-        setErrorMsg(data.error || "Something went wrong. Try again later.");
-        return;
-      }
-
-      setStatus("success");
-      setPrUrl(data.prUrl);
-    } catch {
-      setStatus("error");
-      setErrorMsg("Network error. Check your connection and try again.");
-    }
+      if (!res.ok) { setStatus("error"); setErrorMsg(data.error || "Something went wrong."); return; }
+      setStatus("success"); setPrUrl(data.prUrl);
+    } catch { setStatus("error"); setErrorMsg("Network error."); }
   }
 
-  function handleReset() {
-    if (urlTimer.current) clearTimeout(urlTimer.current);
-    if (ghTimer.current) clearTimeout(ghTimer.current);
-    setStatus("idle");
-    setPrUrl("");
-    setErrorMsg("");
-    setTitle("");
-    setUrl("");
-    setUrlStatus("idle");
-    setUrlMessage("");
-    setDocType("mixed");
-    setContributor("");
-    setGhStatus("idle");
-    setGhMessage("");
-    setBranch("");
-    setCustomBranch("");
-    setBranchMode("dropdown");
-    setSemester("");
-    setCustomSemester("");
-    setSemesterMode("dropdown");
-    setSubject("");
-    setCustomSubject("");
-    setSubjectMode("dropdown");
+  /* ---------- Bulk: parse → table ---------- */
+  function handleParse() {
+    setRows(parsedRows); setBulkStep("table");
+  }
+
+  function updateRow(id: number, field: "subject" | "type", value: string) {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: field === "type" ? value : value } : r));
+  }
+
+  const bulkValid = rows.length > 0 && rows.every(r => r.subject.trim() && r.detectedType);
+
+  /* ---------- Bulk: submit to API ---------- */
+  async function handleBulkSubmit() {
+    if (!bulkValid || submitting) return;
+    setSubmitting(true); setBulkError("");
+    try {
+      const docs = rows.map(r => ({ title: r.title, url: r.url, type: r.detectedType || "mixed", subject: r.subject.trim(), contributor: bulkUser }));
+      const res = await fetch("/api/contribute", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode:"bulk", contributor: bulkUser, docs }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setBulkError(data.error || "Something went wrong."); return; }
+      setBulkPrUrl(data.prUrl); setBulkStep("done");
+    } catch { setBulkError("Network error."); }
+    finally { setSubmitting(false); }
+  }
+
+  function resetSingle() {
+    if (urlTimer.current) clearTimeout(urlTimer.current); if (ghTimer.current) clearTimeout(ghTimer.current);
+    setStatus("idle"); setPrUrl(""); setErrorMsg("");
+    setTitle(""); setUrl(""); setUrlStatus("idle"); setUrlMsg(""); setDocType("mixed");
+    setContributor(""); setGhStatus("idle"); setGhMsg("");
+    setBranch(""); setCustomBranch(""); setBmode("dropdown");
+    setSemester(""); setCustomSemester(""); setSemode("dropdown");
+    setSubject(""); setCustomSubject(""); setSubmode("dropdown");
     setTouched({});
   }
 
-  // Blur handler to mark fields as touched
-  function markTouched(field: string) {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-  }
+  function resetBulk() { setBulkStep("username"); setBulkUser(""); setRawText(""); setRows([]); setBulkPrUrl(""); setBulkError(""); }
 
+  function markTouched(f: string) { setTouched(t => ({ ...t, [f]: true })); }
+
+  /* ---------- Single preview ---------- */
+  const previewJson = useMemo(() => {
+    if (!title.trim() || !url.trim() || !resolvedBranch || !resolvedSemester || !resolvedSubject) return null;
+    return JSON.stringify([{ title: title.trim(), url: url.trim(), type: docType, contributor: contributor.trim() || undefined, uploadedAt: new Date().toISOString().split("T")[0] }], null, 2);
+  }, [title, url, docType, contributor, resolvedBranch, resolvedSemester, resolvedSubject]);
+
+  /* ---------- Render ---------- */
   return (
-    <main className="mx-auto max-w-3xl px-6 pb-16">
+    <main className="mx-auto max-w-4xl px-6 pb-16">
       <div className="pt-16 sm:pt-20">
-        <h1 className="text-5xl font-extrabold tracking-tight text-foreground sm:text-7xl">
-          Contribute
-        </h1>
+        <h1 className="text-5xl font-extrabold tracking-tight text-foreground sm:text-7xl">Contribute</h1>
         <p className="mt-4 text-lg text-muted-foreground sm:text-xl">
-          Add a study material to JU Learning in one click. Fill the form and we&apos;ll open a pull request on GitHub.
+          Add study materials to JU Learning. We&apos;ll open a pull request on GitHub automatically.
         </p>
+
+        {/* Mode toggle */}
+        <div className="mt-8 flex gap-0">
+          <button onClick={() => setMode("single")} className={`px-8 py-3 text-base font-bold transition-all ${mode === "single" ? "bg-brand text-white" : "bg-surface text-muted-foreground hover:text-foreground"}`}>Single document</button>
+          <button onClick={() => setMode("bulk")} className={`px-8 py-3 text-base font-bold transition-all ${mode === "bulk" ? "bg-brand text-white" : "bg-surface text-muted-foreground hover:text-foreground"}`}>Multiple documents</button>
+        </div>
       </div>
 
-      {status === "success" ? (
-        <div className="mt-12">
-          <div className="bg-surface p-10 text-center">
-            <p className="text-2xl font-bold text-foreground">Pull Request Created!</p>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Your document has been submitted. A maintainer will review and merge it.
-            </p>
-            <a
-              href={prUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-block bg-brand px-8 py-4 text-lg font-bold text-white transition-opacity hover:opacity-90"
-            >
-              View PR on GitHub ↗
-            </a>
-            <button
-              onClick={handleReset}
-              className="mt-4 block w-full text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Submit another document
-            </button>
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="mt-12 space-y-8">
-          {/* Branch → Semester → Subject step selects */}
+      {/* ============================================================ */}
+      {/*  SINGLE MODE                                                  */}
+      {/* ============================================================ */}
+      {mode === "single" && status !== "success" && (
+        <form onSubmit={handleSingleSubmit} className="mt-10 space-y-8">
+          {/* Branch → Semester → Subject */}
           <div>
             <p className="mb-4 text-sm font-semibold text-foreground">Where does this document belong?</p>
             <div className="grid grid-cols-3 gap-4">
-              {/* Branch */}
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                  1. Branch
-                </label>
-                {branchMode === "dropdown" ? (
-                  <>
-                    <select
-                      value={branch}
-                      onChange={(e) => {
-                        if (e.target.value === CUSTOM_OPTION) {
-                          setBranchMode("custom");
-                          setSemester("");
-                          setSubject("");
-                        } else {
-                          setBranch(e.target.value);
-                          setSemester("");
-                          setSubject("");
-                        }
-                      }}
-                      onBlur={() => markTouched("branch")}
-                      className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
-                    >
-                      <option value="">Select branch</option>
-                      {branches.map((b) => (
-                        <option key={b} value={b}>{b}</option>
-                      ))}
-                      <option value={CUSTOM_OPTION}>—— Add custom branch ——</option>
-                    </select>
-                    {touched.branch && !branch && (
-                      <p className="mt-1 text-xs text-red-500">Select a branch</p>
-                    )}
-                  </>
-                ) : (
-                  <div>
-                    <input
-                      type="text"
-                      value={customBranch}
-                      onChange={(e) => setCustomBranch(e.target.value)}
-                      onBlur={() => markTouched("branch")}
-                      placeholder="e.g., ECE"
-                      className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      onClick={() => { setBranchMode("dropdown"); setCustomBranch(""); }}
-                      className="mt-2 text-xs font-semibold text-muted-foreground/50 transition-colors hover:text-foreground"
-                    >
-                      ← Back to branches
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Semester */}
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                  2. Semester
-                </label>
-                {semesterMode === "dropdown" ? (
-                  <>
-                    <select
-                      value={semester}
-                      onChange={(e) => {
-                        if (e.target.value === CUSTOM_OPTION) {
-                          setSemesterMode("custom");
-                          setSubject("");
-                        } else {
-                          setSemester(e.target.value ? Number(e.target.value) : "");
-                          setSubject("");
-                        }
-                      }}
-                      onBlur={() => markTouched("semester")}
-                      disabled={!resolvedBranch}
-                      className={`w-full border-0 bg-surface px-4 py-3 text-base outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30 ${
-                        semester ? "text-foreground" : "text-muted-foreground/60"
-                      } ${!resolvedBranch ? "opacity-40" : ""}`}
-                    >
-                      <option value="">Select semester</option>
-                      {semesters.map((s) => (
-                        <option key={s} value={s}>Semester {s}</option>
-                      ))}
-                      <option value={CUSTOM_OPTION}>—— Add custom semester ——</option>
-                    </select>
-                    {touched.semester && !semester && (
-                      <p className="mt-1 text-xs text-red-500">Select a semester</p>
-                    )}
-                  </>
-                ) : (
-                  <div>
-                    <input
-                      type="number"
-                      min={1}
-                      max={12}
-                      value={customSemester}
-                      onChange={(e) => setCustomSemester(e.target.value)}
-                      onBlur={() => markTouched("semester")}
-                      placeholder="e.g., 5"
-                      className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      onClick={() => { setSemesterMode("dropdown"); setCustomSemester(""); }}
-                      className="mt-2 text-xs font-semibold text-muted-foreground/50 transition-colors hover:text-foreground"
-                    >
-                      ← Back to semesters
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Subject */}
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                  3. Subject
-                </label>
-                {subjectMode === "dropdown" ? (
-                  <>
-                    <select
-                      value={subject}
-                      onChange={(e) => {
-                        if (e.target.value === CUSTOM_OPTION) {
-                          setSubjectMode("custom");
-                        } else {
-                          setSubject(e.target.value);
-                        }
-                      }}
-                      onBlur={() => markTouched("subject")}
-                      disabled={!resolvedSemester}
-                      className={`w-full border-0 bg-surface px-4 py-3 text-base outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30 ${
-                        subject ? "text-foreground" : "text-muted-foreground/60"
-                      } ${!resolvedSemester ? "opacity-40" : ""}`}
-                    >
-                      <option value="">Select subject</option>
-                      {subjects.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                      <option value={CUSTOM_OPTION}>—— Add custom subject ——</option>
-                    </select>
-                    {touched.subject && !subject && (
-                      <p className="mt-1 text-xs text-red-500">Select a subject</p>
-                    )}
-                  </>
-                ) : (
-                  <div>
-                    <input
-                      type="text"
-                      value={customSubject}
-                      onChange={(e) => setCustomSubject(e.target.value)}
-                      onBlur={() => markTouched("subject")}
-                      placeholder="e.g., Machine Learning"
-                      className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      onClick={() => { setSubjectMode("dropdown"); setCustomSubject(""); }}
-                      className="mt-2 text-xs font-semibold text-muted-foreground/50 transition-colors hover:text-foreground"
-                    >
-                      ← Back to subjects
-                    </button>
-                  </div>
-                )}
-              </div>
+              {[{ label:"1. Branch", val:branch, setVal:setBranch, mode:bmode, setMode:setBmode, custom:customBranch, setCustom:setCustomBranch, opts:branches, ph:"e.g., ECE", disabled:false, key:"branch" },
+                { label:"2. Semester", val:semester, setVal:(v:any)=>setSemester(v), mode:semode, setMode:setSemode, custom:customSemester, setCustom:setCustomSemester, opts:semesters, ph:"e.g., 5", disabled:!resolvedBranch, key:"semester" },
+                { label:"3. Subject", val:subject, setVal:setSubject, mode:submode, setMode:setSubmode, custom:customSubject, setCustom:setCustomSubject, opts:subjects, ph:"e.g., Machine Learning", disabled:!resolvedSemester, key:"subject" }
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">{f.label}</label>
+                  {f.mode === "dropdown" ? (
+                    <>
+                      <select value={f.val as string} onChange={e => { if (e.target.value === CUSTOM_OPTION) { f.setMode("custom"); } else { f.setVal?.(e.target.value); } }}
+                        onBlur={() => markTouched(f.key)} disabled={f.disabled}
+                        className={`w-full border-0 bg-surface px-4 py-3 text-base outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30 ${f.val ? "text-foreground" : "text-muted-foreground/60"} ${f.disabled ? "opacity-40" : ""}`}>
+                        <option value="">Select {f.key}</option>
+                        {(f.opts as any[]).map(o => <option key={o} value={o}>{f.key === "semester" ? `Semester ${o}` : o}</option>)}
+                        <option value={CUSTOM_OPTION}>—— Add custom {f.key} ——</option>
+                      </select>
+                      {touched[f.key] && !f.val && <p className="mt-1 text-xs text-red-500">Select a {f.key}</p>}
+                    </>
+                  ) : (
+                    <div>
+                      <input type={f.key === "semester" ? "number" : "text"} min={1} max={12} value={f.custom} onChange={e => f.setCustom(e.target.value)}
+                        onBlur={() => markTouched(f.key)} placeholder={f.ph} autoFocus
+                        className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30" />
+                      <button type="button" onClick={() => { f.setMode("dropdown"); f.setCustom(""); }} className="mt-2 text-xs font-semibold text-muted-foreground/50 transition-colors hover:text-foreground">← Back to {f.key}s</button>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -463,176 +316,171 @@ export default function ContributePage() {
           <div>
             <p className="mb-4 text-sm font-semibold text-foreground">Document details</p>
             <div className="space-y-4">
-              {/* Title */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onBlur={() => markTouched("title")}
-                  placeholder="e.g., DBMS Unit 1 Notes"
-                  className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
-                />
-                {touched.title && !title.trim() && (
-                  <p className="mt-1 text-xs text-red-500">Required</p>
-                )}
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Title</label>
+                <input type="text" value={title} onChange={e => setTitle(e.target.value)} onBlur={() => markTouched("title")} placeholder="e.g., DBMS Unit 1 Notes"
+                  className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30" />
+                {touched.title && !title.trim() && <p className="mt-1 text-xs text-red-500">Required</p>}
               </div>
-
-              {/* Drive URL */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                  Drive URL
-                </label>
-                <input
-                  type="url"
-                  value={url}
-                  onChange={(e) => handleUrlChange(e.target.value)}
-                  onBlur={() => markTouched("url")}
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Drive URL</label>
+                <input type="url" value={url} onChange={e => handleUrlChange(e.target.value)} onBlur={() => markTouched("url")}
                   placeholder="https://drive.google.com/file/d/..."
-                  className={`w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 transition-all focus:ring-2 ${
-                    touched.url && urlStatus === "invalid"
-                      ? "ring-red-300 focus:ring-red-400"
-                      : "ring-border/30 focus:ring-brand/30"
-                  }`}
-                />
+                  className={`w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 transition-all focus:ring-2 ${touched.url && urlStatus === "invalid" ? "ring-red-300 focus:ring-red-400" : "ring-border/30 focus:ring-brand/30"}`} />
                 <div className="mt-1 flex items-center gap-1.5">
-                  {urlStatus === "checking" && (
-                    <>
-                      <svg className="h-3 w-3 animate-spin text-muted-foreground/50" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-                        <path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" />
-                      </svg>
-                      <span className="text-xs text-muted-foreground/60">{urlMessage}</span>
-                    </>
-                  )}
-                  {touched.url && urlStatus === "valid" && (
-                    <span className="text-xs text-brand/80">{urlMessage}</span>
-                  )}
-                  {touched.url && urlStatus === "invalid" && (
-                    <span className="text-xs text-red-500">{urlMessage}</span>
-                  )}
-                  {touched.url && urlStatus === "idle" && !url.trim() && (
-                    <span className="text-xs text-red-500">Required</span>
-                  )}
+                  {urlStatus === "checking" && <><svg className="h-3 w-3 animate-spin text-muted-foreground/50" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" /><path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" /></svg><span className="text-xs text-muted-foreground/60">{urlMsg}</span></>}
+                  {touched.url && urlStatus === "valid" && <span className="text-xs text-brand/80">{urlMsg}</span>}
+                  {touched.url && urlStatus === "invalid" && <span className="text-xs text-red-500">{urlMsg}</span>}
+                  {touched.url && urlStatus === "idle" && !url.trim() && <span className="text-xs text-red-500">Required</span>}
                 </div>
               </div>
-
-              {/* Type + Contributor side by side */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                    Type
-                  </label>
-                  <select
-                    value={docType}
-                    onChange={(e) => setDocType(e.target.value)}
-                    className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
-                  >
-                    {TYPES.map((t) => (
-                      <option key={t.id} value={t.id}>{t.label}</option>
-                    ))}
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Type</label>
+                  <select value={docType} onChange={e => setDocType(e.target.value)} className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30">
+                    {TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                    Your GitHub Username
-                  </label>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Your GitHub Username</label>
                   <div className="relative">
-                    <input
-                      type="text"
-                      value={contributor}
-                      onChange={(e) => handleGhChange(e.target.value)}
-                      onBlur={() => markTouched("contributor")}
+                    <input type="text" value={contributor} onChange={e => handleGhChange(e.target.value)} onBlur={() => markTouched("contributor")}
                       placeholder="e.g., aryanbatras"
-                      className={`w-full border-0 bg-surface px-4 py-3 pr-10 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 transition-all focus:ring-2 ${
-                        touched.contributor && ghStatus === "invalid"
-                          ? "ring-red-300 focus:ring-red-400"
-                          : "ring-border/30 focus:ring-brand/30"
-                      }`}
-                    />
-                    {ghStatus === "checking" && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <svg className="h-4 w-4 animate-spin text-muted-foreground/50" viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-                          <path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" />
-                        </svg>
-                      </span>
-                    )}
-                    {ghStatus === "valid" && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-sm">✓</span>
-                    )}
-                    {ghStatus === "invalid" && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500 text-sm">✗</span>
-                    )}
+                      className={`w-full border-0 bg-surface px-4 py-3 pr-10 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 transition-all focus:ring-2 ${touched.contributor && ghStatus === "invalid" ? "ring-red-300 focus:ring-red-400" : "ring-border/30 focus:ring-brand/30"}`} />
+                    {ghStatus === "checking" && <span className="absolute right-3 top-1/2 -translate-y-1/2"><svg className="h-4 w-4 animate-spin text-muted-foreground/50" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" /><path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" /></svg></span>}
+                    {ghStatus === "valid" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-brand">✓</span>}
+                    {ghStatus === "invalid" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-red-500">✗</span>}
                   </div>
-                  {touched.contributor && contributor.trim() && ghStatus === "invalid" && (
-                    <p className="mt-1 text-xs text-red-500">{ghMessage}</p>
-                  )}
-                  {touched.contributor && contributor.trim() && ghStatus === "valid" && (
-                    <p className="mt-1 text-xs text-green-600">{ghMessage}</p>
-                  )}
+                  {touched.contributor && contributor.trim() && ghStatus === "invalid" && <p className="mt-1 text-xs text-red-500">{ghMsg}</p>}
+                  {touched.contributor && contributor.trim() && ghStatus === "valid" && <p className="mt-1 text-xs text-brand/80">{ghMsg}</p>}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* JSON Preview */}
+          {/* Preview */}
           {previewJson && (
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                Preview — file will be created at{" "}
-                <code className="text-foreground/70">
-                  jammu-university/btech/{resolvedBranch.toLowerCase().replace(/[^a-z0-9]/g, "")}/semester-{resolvedSemester}/{resolvedSubject.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")}/{resolvedSubject.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")}-{(contributor.trim() || "anonymous").toLowerCase().replace(/[^a-z0-9-]/g, "")}.json
-                </code>
-              </p>
-              <pre className="overflow-x-auto bg-surface p-4 text-xs leading-relaxed text-muted-foreground ring-1 ring-border/30">
-                {previewJson}
-              </pre>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Preview</p>
+              <pre className="overflow-x-auto bg-surface p-4 text-xs leading-relaxed text-muted-foreground ring-1 ring-border/30">{previewJson}</pre>
             </div>
           )}
 
-          {/* Error */}
-          {status === "error" && (
-            <div className="bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">
-              {errorMsg}
-            </div>
-          )}
+          {status === "error" && <div className="bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">{errorMsg}</div>}
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={!canSubmit || status === "loading"}
-            className={`w-full px-8 py-5 text-lg font-bold text-white transition-all ${
-              status === "loading"
-                ? "bg-muted-foreground/30 cursor-not-allowed"
-                : canSubmit
-                  ? "bg-brand hover:opacity-90 cursor-pointer"
-                  : "bg-muted-foreground/20 text-muted-foreground/50 cursor-not-allowed"
-            }`}
-          >
-            {status === "loading" ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-                  <path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" />
-                </svg>
-                Creating pull request...
-              </span>
-            ) : (
-              "Raise Pull Request"
-            )}
+          <button type="submit" disabled={!singleValid || status === "loading"}
+            className={`w-full px-8 py-5 text-lg font-bold text-white transition-all ${status === "loading" ? "bg-muted-foreground/30 cursor-not-allowed" : singleValid ? "bg-brand hover:opacity-90 cursor-pointer" : "bg-muted-foreground/20 text-muted-foreground/50 cursor-not-allowed"}`}>
+            {status === "loading" ? <span className="flex items-center justify-center gap-2"><svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" /><path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" /></svg>Creating pull request...</span> : "Raise Pull Request"}
           </button>
-
-          <p className="text-center text-xs text-muted-foreground/50">
-            By submitting, you agree that your document link will be publicly listed on JU Learning.
-            Your file stays on your Drive — we only index the link.
-          </p>
         </form>
       )}
+
+      {mode === "single" && status === "success" && (
+        <div className="mt-12 bg-surface p-10 text-center">
+          <p className="text-2xl font-bold text-foreground">Pull Request Created!</p>
+          <p className="mt-3 text-sm text-muted-foreground">A maintainer will review and merge it.</p>
+          <a href={prUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block bg-brand px-8 py-4 text-lg font-bold text-white transition-opacity hover:opacity-90">View PR on GitHub ↗</a>
+          <button onClick={resetSingle} className="mt-4 block w-full text-center text-sm text-muted-foreground transition-colors hover:text-foreground">Submit another document</button>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  BULK MODE                                                    */}
+      {/* ============================================================ */}
+      {mode === "bulk" && bulkStep !== "done" && (
+        <div className="mt-10">
+          {/* Instructions */}
+          <div className="bg-surface px-6 py-5 mb-8">
+            <h2 className="text-lg font-bold text-foreground">How to contribute multiple documents</h2>
+            <ol className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground list-decimal list-inside">
+              <li>Create a folder in Google Drive, right-click → <strong>Share</strong> → <strong>Anyone with the link</strong> → <strong>Viewer</strong>. Drop your files in.</li>
+              <li>Open the folder in <strong>List view</strong>. Install and click the <a href="https://chromewebstore.google.com/detail/Google%20Drive%20Link%20Getter/pcepfnopeaalfdibnbflpphaapbfoicl" target="_blank" rel="noopener noreferrer" className="text-brand underline">Drive Link Getter</a> extension to copy all links.</li>
+              <li>Enter your GitHub username, paste the links below, set the type and subject for each file, then click submit.</li>
+            </ol>
+          </div>
+
+          {bulkStep === "username" && (
+            <div>
+              <label className="block text-sm font-semibold text-foreground">Your GitHub Username</label>
+              <p className="mt-1 text-sm text-muted-foreground">This will be used as the contributor for every document.</p>
+              <input type="text" value={bulkUser} onChange={e => setBulkUser(e.target.value)} placeholder="e.g., aryanbatras" autoFocus
+                className="mt-3 w-full max-w-md border-0 bg-surface px-5 py-4 text-base text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20" />
+              <button onClick={() => bulkUser.trim() && setBulkStep("paste")} disabled={!bulkUser.trim()}
+                className="mt-6 bg-brand px-8 py-4 text-base font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed">Continue</button>
+            </div>
+          )}
+
+          {bulkStep === "paste" && (
+            <div>
+              <p className="mb-1 text-sm text-muted-foreground">Contributor: <span className="font-semibold text-foreground">{bulkUser}</span> · <button onClick={() => setBulkStep("username")} className="text-xs text-brand underline">change</button></p>
+              <label className="mt-6 block text-sm font-semibold text-foreground">Paste your Drive links here</label>
+              <textarea value={rawText} onChange={e => setRawText(e.target.value)} placeholder="Paste the tab-separated list from Google Drive Link Getter..." rows={8} autoFocus
+                className="mt-2 w-full border-0 bg-surface px-5 py-4 text-sm text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20 resize-y" />
+              {rawText.trim() && <p className="mt-4 text-sm text-muted-foreground">{parsedFiles.length} valid file{parsedFiles.length !== 1 ? "s" : ""} detected</p>}
+              {parsedFiles.length > 0 && <button onClick={handleParse} className="mt-6 bg-brand px-8 py-4 text-base font-bold text-white transition-opacity hover:opacity-90">Set types & subjects →</button>}
+            </div>
+          )}
+
+          {bulkStep === "table" && (
+            <div>
+              <p className="mb-4 text-sm text-muted-foreground">Contributor: <span className="font-semibold text-foreground">{bulkUser}</span> · <button onClick={() => setBulkStep("username")} className="text-xs text-brand underline">change</button> · <button onClick={() => { setBulkStep("paste"); setRows([]); }} className="text-xs text-brand underline">back to paste</button></p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/20 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                      <th className="px-3 py-3 font-normal">#</th>
+                      <th className="px-3 py-3 font-normal">File</th>
+                      <th className="px-3 py-3 font-normal min-w-[140px]">Type</th>
+                      <th className="px-3 py-3 font-normal min-w-[180px]">Subject</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, i) => (
+                      <tr key={row.id} className="border-b border-border/10 transition-colors hover:bg-accent/30">
+                        <td className="px-3 py-3 text-xs text-muted-foreground/50">{i + 1}</td>
+                        <td className="px-3 py-3 max-w-[280px]"><p className="truncate font-medium text-foreground">{row.title}</p></td>
+                        <td className="px-3 py-3">
+                          <select value={row.detectedType} onChange={e => updateRow(row.id, "type", e.target.value)}
+                            className={`w-full border-0 bg-surface px-3 py-2.5 text-sm outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20 ${row.detectedType ? "text-foreground" : "text-muted-foreground/50"}`}>
+                            <option value="" disabled>Select type...</option>
+                            {TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-3 py-3">
+                          <input type="text" value={row.subject} onChange={e => updateRow(row.id, "subject", e.target.value)}
+                            placeholder="e.g., Database Management Systems"
+                            className="w-full border-0 bg-surface px-3 py-2.5 text-sm text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20 placeholder:text-muted-foreground/30" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-4 text-sm text-muted-foreground">{rows.length} file{rows.length !== 1 ? "s" : ""}{rows.filter(r => !r.subject.trim()).length > 0 && <span className="ml-2 text-muted-foreground/50">· {rows.filter(r => !r.subject.trim()).length} missing subject</span>}</p>
+              {bulkError && <div className="mt-4 bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">{bulkError}</div>}
+              <button onClick={handleBulkSubmit} disabled={!bulkValid || submitting}
+                className={`mt-6 bg-brand px-8 py-4 text-base font-bold text-white transition-opacity ${(!bulkValid || submitting) ? "opacity-30 cursor-not-allowed" : "hover:opacity-90 cursor-pointer"}`}>
+                {submitting ? "Creating pull request..." : `Submit ${rows.length} file${rows.length !== 1 ? "s" : ""}`}
+              </button>
+              {!bulkValid && <p className="mt-3 text-xs text-muted-foreground/50">Fill in type and subject for every file to continue.</p>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {mode === "bulk" && bulkStep === "done" && (
+        <div className="mt-12 bg-surface p-10 text-center">
+          <p className="text-2xl font-bold text-foreground">Pull Request Created!</p>
+          <p className="mt-3 text-sm text-muted-foreground">{rows.length} documents submitted in a single PR.</p>
+          <a href={bulkPrUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block bg-brand px-8 py-4 text-lg font-bold text-white transition-opacity hover:opacity-90">View PR on GitHub ↗</a>
+          <button onClick={resetBulk} className="mt-4 block w-full text-center text-sm text-muted-foreground transition-colors hover:text-foreground">Submit more documents</button>
+        </div>
+      )}
+
+      <p className="mt-8 text-center text-xs text-muted-foreground/50">
+        By submitting, you agree that your document links will be publicly listed on JU Learning.
+        Your files stay on your Drive — we only index the links.
+      </p>
     </main>
   );
 }
