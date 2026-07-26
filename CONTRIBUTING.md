@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-The dev server starts on port 3000. The predev script clones the metadata repo — you need internet access for the first run. The generated data includes ~1,600+ documents across 5 sources.
+The dev server starts on port 3000. The predev script clones the metadata repo — you need internet access for the first run. The generated data includes documents from the sources defined in the metadata repo.
 
 ## Project structure
 
@@ -29,7 +29,9 @@ src/
 │   ├── handwritten/
 │   ├── digital-notes/
 │   ├── pyq/
-│   ├── automation/drive/
+│   ├── contribute/               # Single + bulk document submission
+│   ├── sources/                   # Dynamic sources page (reads from metadata)
+│   ├── contributors/
 │   ├── terms/
 │   └── privacy/
 ├── components/
@@ -37,77 +39,53 @@ src/
 │   ├── Footer.tsx
 │   ├── SearchHero.tsx             # Search bar + results grid + filters
 │   ├── ResultCard.tsx             # Document card in search results
-│   ├── CategoryCard.tsx           # Homepage category cards
-│   ├── RecentDocs.tsx
-│   ├── ContributorCircle.tsx      # Contributor gravity display
-│   ├── PaginatedGrid.tsx          # Grid with pagination
+│   ├── PaginatedGrid.tsx          # Grid with infinite scroll
 │   ├── SortDropdown.tsx
 │   ├── TypeFilter.tsx
 │   ├── SourceDropdown.tsx
 │   ├── Breadcrumbs.tsx
-│   └── RevealSection.tsx
+│   └── ContributorCircle.tsx
 ├── lib/
 │   ├── search.ts                  # Custom search + sort (no external lib)
 │   ├── types.ts                   # Document, FilterState types
-│   └── report.ts                  # Broken link reporting
+│   └── report.ts                  # Broken link reporting (creates GitHub issue)
+├── scripts/
+│   └── generate-data.mjs          # Build-time data generator
 └── data/
     └── generated-documents.ts     # Auto-generated at build time
 ```
 
 ## Content sources
 
-The website aggregates documents from five sources. Search results are grouped by source with JU content appearing first.
+Sources are defined by the metadata repository's folder structure:
+- `jammu-university/` — hierarchical (degree/branch/semester/subject)
+- `other-sources/{name}/` — flat (non-JU sources like wikibooks)
 
-| Source | Documents | Hierarchy |
-|--------|-----------|-----------|
-| jammu-university | ~30 | `degree/branch/semester/subject` |
-| open-textbook-library | 631 | Flat |
-| openstax | 56 | Flat |
-| project-gutenberg | 524 | Flat |
-| wikibooks | 401 | Flat |
+Each source in `other-sources/` has a `{name}.json` metadata file (name, description, url) and a `{name}/` folder with individual document files. The website discovers all sources automatically — add a new folder to the metadata repo and it appears on the next build.
 
 ## Coding conventions
 
 - **TypeScript**. No `any`. No `// @ts-ignore`.
-- **Tailwind CSS** for all styling. No CSS modules, no styled-components.
-- **Server components by default**. Only add `"use client"` when you need interactivity (event handlers, state, effects).
+- **Tailwind CSS** for all styling.
+- **Server components by default**. Only add `"use client"` when you need interactivity.
 - **No `console.log`** in committed code.
 - **Imports order**: React/Next → libraries → local components → local utilities → types
 
-## Component patterns
+## Handle nullable fields gracefully
 
-**Card components** (`ResultCard`, `CategoryCard`):
-- Accept a `Document` or `SearchResult` prop
-- Use the `group` + `group-hover:` pattern for hover state inversion (white → `#BF00FF`)
-- Drive thumbnail auto-generated from URL via `getThumbnailUrl()`
-- Handle thumbnail load failure with `imgFailed` state + letter fallback
-- Contributor link should not be nested inside the main card link (invalid HTML)
+Documents from different sources have different fields:
+- JU documents have `branch`, `semester`, `subject`
+- Non-JU documents have `branch: null`, `semester: null`, `subject: null`
+- Always use optional chaining and null-safe patterns when accessing document fields
 
-**Dropdown components** (`SortDropdown`, `TypeFilter`, `SourceDropdown`):
-- Click-outside-to-close via `useRef` + `mousedown` event listener
-- Absolutely positioned below the trigger button
-- No borders, no rounded corners, no shadows
+Bad: `d.branch === branch`  
+Good: `d.branch && d.branch === branch`
 
-**SearchHero**:
-- Custom search implementation (not Fuse.js)
-- Debounce-based auto-search (1s delay)
-- Results grouped by source (JU first, others alphabetically)
-- Supports sort, type filter, and source selection
-
-**Page components:**
-- Use `Breadcrumbs` for navigation context
-- Use `generateMetadata` for page titles and descriptions
-- Filter data with standard array methods
-
-## Handle undefined data gracefully
-
-Documents from different sources may have different fields:
-- JU documents have `branch`, `semester`, `subject` (from folder hierarchy)
-- Non-JU documents may have `subject` but no `branch` or `semester`
-- Always use optional chaining (`?.`) and fallbacks when accessing fields that could be undefined
-
-Bad: `doc.branch.toLowerCase()`
-Good: `doc.branch?.toLowerCase() || "cse"`
+When sorting or creating `Set`s from nullable fields, always filter out nulls first:
+```ts
+.filter((s): s is number => s != null)
+.sort((a, b) => a - b)
+```
 
 ## Pull request process
 
@@ -116,22 +94,16 @@ Good: `doc.branch?.toLowerCase() || "cse"`
 3. Run `npm run build` — it must pass with zero errors
 4. Open a PR with a clear title and description
 5. If your PR changes UI, mention what it looks like (or add a screenshot)
-6. Wait for review. Merge happens after at least one approval
 
 ## Build checks
 
-The build does two things:
 1. **Data generation**: Clones metadata repo, reads JSON, generates `src/data/generated-documents.ts`
-2. **Next.js build**: TypeScript check + static page generation (18+ routes)
+2. **Next.js build**: TypeScript check + static page generation (33+ routes)
 
 Both must pass. Run locally before pushing.
 
 ## Reporting issues
 
-If you find a bug, open an issue. Include:
-- What you expected to happen
-- What actually happened
-- Browser and OS
-- Steps to reproduce
+For bugs, open an issue. Include what you expected, what happened, browser and OS.
 
-For broken document links, use the "Report broken link" button on the website.
+For broken document links, use the "Report broken link" button on any document card — it creates an issue automatically.
