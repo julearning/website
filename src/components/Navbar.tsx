@@ -5,8 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
-const NAV_LINKS = [
+const NAV_ITEMS = [
+  { href: "/pyq", label: "PYQs" },
+  { href: "/handwritten", label: "Handwritten" },
+  { href: "/digital-notes", label: "Digital Notes" },
   { href: "/branches", label: "Branches" },
+  { href: "/subjects", label: "Subjects" },
   { href: "/degree", label: "Degree" },
 ];
 
@@ -22,43 +26,48 @@ export function Navbar() {
   // Close menu on resize to desktop
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth >= 640) setMenuOpen(false);
+      if (window.innerWidth >= 768) setMenuOpen(false);
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const isActive = (path: string) =>
-    pathname.startsWith(path)
-      ? "text-foreground font-medium"
+  const isPageActive = (href: string) =>
+    pathname.startsWith(href)
+      ? "text-foreground font-semibold"
       : "text-muted-foreground hover:text-foreground";
 
+  function closeMenu() {
+    setMenuOpen(false);
+  }
+
   return (
-    <header className="py-5">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6">
+    <header className="border-b border-border/10">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-7 md:py-10">
+        {/* Logo — big and bold */}
         <Link
           href="/"
-          className="text-xl font-semibold tracking-tight text-foreground transition-opacity hover:opacity-70"
+          className="text-3xl font-extrabold tracking-tight text-foreground transition-opacity hover:opacity-70 md:text-4xl"
         >
           JU Learning
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-5 sm:flex">
-          {NAV_LINKS.map((link) => (
+        <nav className="hidden items-center gap-1 md:flex">
+          {NAV_ITEMS.map((item) => (
             <Link
-              key={link.href}
-              href={link.href}
-              className={`text-sm transition-colors ${isActive(link.href)}`}
+              key={item.label}
+              href={item.href}
+              className={`rounded-none px-4 py-3 text-xl font-semibold transition-all duration-200 hover:bg-accent ${isPageActive(item.href)}`}
             >
-              {link.label}
+              {item.label}
             </Link>
           ))}
           <a
             href="https://github.com/julearning"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="ml-2 rounded-none px-4 py-3 text-xl font-semibold text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground"
           >
             GitHub
           </a>
@@ -67,46 +76,49 @@ export function Navbar() {
         {/* Mobile hamburger */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="flex sm:hidden"
+          className="flex md:hidden"
           aria-label={menuOpen ? "Close menu" : "Open menu"}
         >
           {menuOpen ? (
-            <X className="h-5 w-5 text-foreground" />
+            <X className="h-6 w-6 text-foreground" />
           ) : (
-            <Menu className="h-5 w-5 text-foreground" />
+            <Menu className="h-6 w-6 text-foreground" />
           )}
         </button>
       </div>
 
-      {/* Mobile menu dropdown */}
-      {menuOpen && (        <div className="mx-auto mt-4 max-w-5xl px-6 sm:hidden">
-          <div className="bg-white p-3 transition-colors duration-300 hover:bg-brand">
-            <nav className="flex flex-col gap-1">
-              {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`px-3 py-2.5 text-sm transition-colors ${
-                    pathname.startsWith(link.href)
-                      ? "bg-accent font-medium text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <a
-                href="https://github.com/julearning"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="border-t border-border/10 md:hidden">
+          <nav className="mx-auto flex max-w-6xl flex-col px-6 py-4">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={closeMenu}
+                className={`py-4 text-xl font-bold transition-opacity hover:opacity-60 ${
+                  pathname.startsWith(item.href)
+                    ? "text-brand"
+                    : "text-foreground"
+                }`}
               >
-                GitHub
-              </a>
-            </nav>
-          </div>
+                {item.label}
+              </Link>
+            ))}
+            <div className="my-4 h-px bg-border/10" />
+            <a
+              href="https://github.com/julearning"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={closeMenu}
+              className="py-4 text-xl font-bold text-foreground transition-opacity hover:opacity-60"
+            >
+              GitHub
+            </a>
+          </nav>
         </div>
       )}
     </header>
   );
 }
+

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 
 const geist = Geist({
@@ -34,9 +35,8 @@ export default function RootLayout({
     <html lang="en" className={`${geist.variable} ${plusJakartaSans.variable}`}>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <div className="flex min-h-screen flex-col">
-          <div className="flex-1">
-            {children}
-          </div>
+          <Navbar />
+          <div className="flex-1">{children}</div>
           <Footer />
         </div>
       </body>

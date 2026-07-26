@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getUniqueBranches, getDocumentsByBranch, documents } from "@/data/documents";
 import type { Branch } from "@/lib/types";
-import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { SearchHero } from "@/components/SearchHero";
 
 const BRANCH_NAMES: Record<Branch, string> = {
   CSE: "Computer Science & Engineering",
@@ -24,17 +24,8 @@ export default function DegreePage() {
   const allSubjects = [...new Set(documents.map((d) => d.subject))].sort();
 
   return (
-    <div className="mx-auto max-w-6xl px-6 pb-16">
-      <div className="pt-16 sm:pt-20">
-        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "B.Tech" }]} />
-
-        <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-          Bachelor of Technology (B.Tech)
-        </h1>
-        <p className="mt-3 text-base text-muted-foreground">
-          {totalDocs} study materials across {branches.length} branches, {allSems.length} semesters, and {allSubjects.length} subjects.
-        </p>
-      </div>
+    <main className="mx-auto max-w-6xl px-6 pb-16">
+      <SearchHero title="B.Tech Degree" subtitle="Browse all branches, semesters, and study materials for your engineering degree." />
 
       <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {branches.map((branch) => {
@@ -57,6 +48,6 @@ export default function DegreePage() {
           );
         })}
       </div>
-    </div>
+    </main>
   );
 }

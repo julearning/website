@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getUniqueBranches, getDocumentsByBranch } from "@/data/documents";
 import type { Branch } from "@/lib/types";
-import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { SearchHero } from "@/components/SearchHero";
 
 const BRANCH_NAMES: Record<Branch, string> = {
   CSE: "Computer Science & Engineering",
@@ -21,12 +21,8 @@ export default function BranchesPage() {
   const branches = getUniqueBranches();
 
   return (
-    <div className="mx-auto max-w-6xl px-6 pb-16">
-      <div className="pt-16 sm:pt-20">
-        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Branches" }]} />
-        <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">Engineering Branches</h1>
-        <p className="mt-3 text-base text-muted-foreground">Select your branch to browse study materials by semester and subject.</p>
-      </div>
+    <main className="mx-auto max-w-6xl px-6 pb-16">
+      <SearchHero title="Engineering Branches" subtitle="Select your branch to browse study materials by semester and subject." />
 
       <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {branches.map((branch) => {
@@ -48,6 +44,6 @@ export default function BranchesPage() {
           );
         })}
       </div>
-    </div>
+    </main>
   );
 }
