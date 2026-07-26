@@ -35,8 +35,8 @@ export function ResultCard({ result }: { result: SearchResult }) {
               <div className="absolute inset-0 bg-transparent transition-colors duration-300 group-hover:bg-[#bf00ff]/10" />
             </>
           ) : (
-            <div className="flex h-56 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
-              <span className="text-4xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
+            <div className="flex h-72 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
+              <span className="text-6xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
                 {doc.title.charAt(0).toUpperCase()}
               </span>
             </div>
@@ -52,13 +52,13 @@ export function ResultCard({ result }: { result: SearchResult }) {
         </div>
 
         {/* Info */}
-        <div className="p-4 transition-colors duration-300">
-          <h3 className="text-sm font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-white">
+        <div className="p-5 transition-colors duration-300">
+          <h3 className="text-base font-bold leading-snug text-foreground transition-colors duration-300 group-hover:text-white">
             {doc.title}
           </h3>
 
           {/* Taxonomy row */}
-          <p className="mt-2 text-xs text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70">
+          <p className="mt-2 text-sm text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70">
             {doc.subject}
             <span className="mx-1.5 text-muted-foreground/30 transition-colors duration-300 group-hover:text-white/30">·</span>
             {doc.branch} S{doc.semester}
@@ -66,10 +66,10 @@ export function ResultCard({ result }: { result: SearchResult }) {
 
           {/* File size + download */}
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/50">
+            <span className="text-xs text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/50">
               {formatFileSize(doc.fileSize)}
             </span>
-            <span className="text-[11px] font-medium text-foreground/60 transition-colors duration-300 group-hover:text-white/80">
+            <span className="text-xs font-semibold text-foreground/60 transition-colors duration-300 group-hover:text-white/80">
               Download
             </span>
           </div>

@@ -92,7 +92,9 @@ function getSemesters(branch: string): number[] {
 }
 
 function getSubjects(branch: string, semester: number): string[] {
-  return [...new Set(juDocs.filter((d) => d.branch === branch && d.semester === semester).map((d) => d.subject).filter(Boolean))].sort();
+  return [...new Set(juDocs.filter((d) => d.branch === branch && d.semester === semester).map((d) => d.subject).filter(Boolean))]
+    .filter((s) => !/^Semester\s+\d+$/i.test(s))
+    .sort();
 }
 
 function BrowseChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -238,9 +240,10 @@ export function SearchHero({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // If a defaultSource was provided, perform a search on mount
+  // If a defaultSource was provided, sync dropdown + search on mount
   useEffect(() => {
     if (defaultSource) {
+      setActiveSources([defaultSource]);
       performSearch("", undefined, undefined, [defaultSource]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -403,13 +406,26 @@ export function SearchHero({
             )}
           </div>
 
+          {/* Filters — above browse chips */}
+          <div className="flex flex-wrap items-center justify-end gap-1 pt-4">
+            <SortDropdown value={sort} onChange={handleSortChange} />
+            <TypeFilter activeType={activeType} onChange={handleTypeChange} />
+            {availableSources.length > 1 && (
+              <SourceDropdown
+                availableSources={availableSources}
+                activeSources={activeSources}
+                onChange={handleSourcesChange}
+              />
+            )}
+          </div>
+
           {/* Browse chips — right below the search bar, big and bold */}
           {branches.length > 0 && (
             <div className="mt-6 text-left">
               {showStepIndicator && (
                 <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground/60">
                   <button
-                    onClick={() => { setActiveBranch(null); setActiveSemester(null); setActiveSubject(null); performSearch(query, undefined, undefined, undefined, null, null, null); }}
+                    onClick={() => { setActiveBranch(null); setActiveSemester(null); setActiveSubject(null); setResults([]); setHasSearched(false); }}
                     className="hover:text-foreground transition-colors font-bold"
                   >
                     Browse
@@ -482,18 +498,7 @@ export function SearchHero({
             </div>
           )}
 
-          {/* Filters — under the search bar and browse chips */}
-          <div className="flex flex-wrap items-center justify-end gap-1 pt-4">
-            <SortDropdown value={sort} onChange={handleSortChange} />
-            <TypeFilter activeType={activeType} onChange={handleTypeChange} />
-            {availableSources.length > 1 && (
-              <SourceDropdown
-                availableSources={availableSources}
-                activeSources={activeSources}
-                onChange={handleSourcesChange}
-              />
-            )}
-          </div>
+
         </div>
       </div>
 
