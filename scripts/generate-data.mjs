@@ -75,6 +75,11 @@ function inferFileType(url) {
   return "pdf";
 }
 
+/** Check if a JSON file is a source metadata file (name/description/url format) */
+function isSourceMeta(data) {
+  return data && typeof data === "object" && !Array.isArray(data) && data.name && data.description && data.url;
+}
+
 function scanDir(dir) {
   const allFiles = [];
 
@@ -107,6 +112,10 @@ function inferSource(filePath, cloneRoot) {
   if (!segments.length) return "unknown";
   // Folders under other-sources/ use the subfolder as the source name
   if (segments[0] === "other-sources" && segments.length > 1) {
+    // If it's a file directly in other-sources/ (e.g. wikibooks.json), strip .json
+    if (segments.length === 2 && segments[1].endsWith(".json")) {
+      return segments[1].replace(/\.json$/, "");
+    }
     return segments[1];
   }
   return segments[0];
@@ -165,6 +174,7 @@ function isLegacySubject(data) {
 
 function flattenDocuments(jsonFiles, cloneRoot) {
   const docs = [];
+  const sources = [];
   let idCounter = 1;
 
   for (const filePath of jsonFiles) {
@@ -172,6 +182,17 @@ function flattenDocuments(jsonFiles, cloneRoot) {
       const raw = fs.readFileSync(filePath, "utf-8");
       const data = JSON.parse(raw);
       const source = inferSource(filePath, cloneRoot);
+
+      // --- Format 0: Source metadata file (e.g. wikibooks.json in other-sources/) ---
+      if (isSourceMeta(data)) {
+        sources.push({
+          id: source,
+          name: data.name,
+          description: data.description,
+          url: data.url,
+        });
+        continue;
+      }
 
       // --- Format 1: Simplified array ---
       if (isArrayFormat(data)) {
@@ -305,10 +326,10 @@ function flattenDocuments(jsonFiles, cloneRoot) {
     }
   }
 
-  return docs;
+  return { docs, sources };
 }
 
-function generateFile(docs) {
+function generateFile({ docs, sources }) {
   const json = JSON.stringify(docs, null, 2);
   const lines = [
     "// Auto-generated at build time. Do not edit.",
@@ -316,7 +337,16 @@ function generateFile(docs) {
     "",
     'import type { Document } from "@/lib/types";',
     "",
-    "export const documents = " + json + " as Document[];",
+    "export const documents = " + JSON.stringify(docs, null, 2) + " as Document[];",
+    "",
+    "export interface SourceMeta {",
+    '  id: string;',
+    '  name: string;',
+    '  description: string;',
+    '  url: string;',
+    "}",
+    "",
+    "export const sources: SourceMeta[] = " + JSON.stringify(sources, null, 2) + ";",
     "",
     "export function getUniqueBranches(): string[] {",
     "  return [...new Set(documents.map((d: Document) => d.branch).filter(Boolean))] as string[];",
@@ -354,10 +384,10 @@ try {
   const jsonFiles = scanDir(CLONE_DIR);
   console.log(`Found ${jsonFiles.length} JSON files`);
 
-  const docs = flattenDocuments(jsonFiles, CLONE_DIR);
-  console.log(`Flattened into ${docs.length} documents`);
+  const result = flattenDocuments(jsonFiles, CLONE_DIR);
+  console.log(`Flattened into ${result.docs.length} documents from ${result.sources.length} sources`);
 
-  const content = generateFile(docs);
+  const content = generateFile(result);
   fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
   fs.writeFileSync(OUTPUT_FILE, content, "utf-8");
 

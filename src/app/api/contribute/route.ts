@@ -10,6 +10,10 @@ interface SingleDoc {
   type: string;
   contributor: string;
   source?: string;
+  isNewSource?: boolean;
+  sourceName?: string;
+  sourceDescription?: string;
+  sourceUrl?: string;
   branch: string;
   semester: number;
   subject: string;
@@ -38,10 +42,20 @@ function validate(body: unknown): { ok: true; mode: "single"; data: SingleDoc } 
     return { ok: true, mode: "bulk", contributor: b.contributor as string, docs: b.docs as BulkDoc[] };
   }
 
-  // Source defaults to jammu-university if not provided
   const source = typeof b.source === "string" ? b.source : "jammu-university";
+  const isNewSource = b.isNewSource === true;
 
-  if (source === "jammu-university") {
+  if (isNewSource) {
+    // New source: needs sourceName, sourceUrl + title, url, type, contributor
+    if (typeof b.sourceName !== "string" || !b.sourceName.trim().length ||
+        typeof b.sourceUrl !== "string" || !b.sourceUrl.trim().length ||
+        typeof b.title !== "string" || !b.title.trim().length ||
+        typeof b.url !== "string" || !b.url.trim().length ||
+        typeof b.type !== "string" ||
+        typeof b.contributor !== "string") {
+      return { ok: false, error: "Missing or invalid fields. Required: sourceName, sourceUrl, title, url, type, contributor." };
+    }
+  } else if (source === "jammu-university") {
     if (typeof b.title !== "string" || !b.title.trim().length ||
         typeof b.url !== "string" || !b.url.trim().length ||
         typeof b.type !== "string" ||
@@ -52,7 +66,6 @@ function validate(body: unknown): { ok: true; mode: "single"; data: SingleDoc } 
       return { ok: false, error: "Missing or invalid fields. Required: title, url, type, contributor, branch, semester, subject." };
     }
   } else {
-    // Non-JU sources only need title, url, type, contributor
     if (typeof b.title !== "string" || !b.title.trim().length ||
         typeof b.url !== "string" || !b.url.trim().length ||
         typeof b.type !== "string" ||
@@ -61,20 +74,24 @@ function validate(body: unknown): { ok: true; mode: "single"; data: SingleDoc } 
     }
   }
 
-  return { ok: true, mode: "single", data: { ...(b as unknown as SingleDoc), source } };
+  return { ok: true, mode: "single", data: { ...(b as unknown as SingleDoc), source, isNewSource } };
 }
 
-// Construct the JSON array for a subject group
-function buildJson(docs: { title: string; url: string; type: string; contributor: string }[]): string {
+function buildJson(docs: { title: string; url: string; type: string; contributor: string; thumbnailUrl?: string }[]): string {
   const today = new Date().toISOString().split("T")[0];
   const entries = docs.map(d => ({
     title: d.title.trim(),
     url: d.url.trim(),
     type: d.type,
     contributor: d.contributor.trim() || undefined,
+    thumbnailUrl: d.thumbnailUrl || undefined,
     uploadedAt: today,
   }));
   return JSON.stringify(entries, null, 2);
+}
+
+function sanitizeSlug(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
 }
 
 export async function POST(request: NextRequest) {
@@ -96,7 +113,6 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    // 1. Get main branch SHA
     const refRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/ref/heads/main`, { headers });
     if (!refRes.ok) {
       const err = await refRes.json().catch(() => ({}));
@@ -107,12 +123,12 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
 
     if (parsed.mode === "single") {
-      const { title, url, thumbnailUrl, type, contributor, source, branch, semester, subject } = parsed.data;
+      const { title, url, thumbnailUrl, type, contributor, source, isNewSource, sourceName, sourceDescription, sourceUrl, branch, semester, subject } = parsed.data;
       const ghUser = contributor.toLowerCase().replace(/[^a-z0-9-]/g, "") || "anonymous";
       const branchName = `contribute/${Date.now()}`;
       const sourceFolder = source || "jammu-university";
 
-      // Build JSON content — include thumbnailUrl if provided
+      // Build document JSON content
       const today = new Date().toISOString().split("T")[0];
       const entries: Record<string, unknown>[] = [{
         title: title.trim(),
@@ -122,19 +138,25 @@ export async function POST(request: NextRequest) {
         uploadedAt: today,
       }];
       if (thumbnailUrl) entries[0].thumbnailUrl = thumbnailUrl;
-      if (source !== "jammu-university") entries[0].description = type;
+      if (sourceFolder !== "jammu-university") entries[0].description = type;
       const jsonContent = JSON.stringify(entries, null, 2);
       const base64Content = Buffer.from(jsonContent, "utf-8").toString("base64");
 
-      // Determine file path based on source
-      let filePath: string;
-      if (sourceFolder === "jammu-university") {
+      // Determine file paths
+      let docFilePath: string;
+      let metaFilePath: string | null = null;
+
+      if (isNewSource && sourceName) {
+        // New source: create metadata file + doc file in other-sources/{slug}/
+        const sourceSlug = sanitizeSlug(sourceName);
+        docFilePath = `other-sources/${sourceSlug}/${ghUser}.json`;
+        metaFilePath = `other-sources/${sourceSlug}.json`;
+      } else if (sourceFolder === "jammu-university") {
         const branchSlug = branch.toLowerCase().replace(/[^a-z0-9]/g, "");
         const subjectSlug = subject.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-        filePath = `jammu-university/btech/${branchSlug}/semester-${semester}/${subjectSlug}/${subjectSlug}-${ghUser}.json`;
+        docFilePath = `jammu-university/btech/${branchSlug}/semester-${semester}/${subjectSlug}/${subjectSlug}-${ghUser}.json`;
       } else {
-        // Non-JU sources: place in source folder directly
-        filePath = `${sourceFolder}/${ghUser}.json`;
+        docFilePath = `other-sources/${sourceFolder}/${ghUser}.json`;
       }
 
       // Create branch
@@ -147,8 +169,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `Failed to create branch: ${(e as { message?: string }).message || br.statusText}` }, { status: 502 });
       }
 
-      // Create file
-      const fr = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`, {
+      // Create metadata file (for new sources)
+      if (metaFilePath) {
+        const metaContent = JSON.stringify({
+          name: sourceName?.trim(),
+          description: sourceDescription?.trim() || `${sourceName?.trim()} resources`,
+          url: sourceUrl?.trim(),
+        }, null, 2);
+        const metaBase64 = Buffer.from(metaContent, "utf-8").toString("base64");
+        const metaRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${metaFilePath}`, {
+          method: "PUT", headers,
+          body: JSON.stringify({ message: `Add source: ${sourceName?.trim()}`, content: metaBase64, branch: branchName }),
+        });
+        if (!metaRes.ok) {
+          await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs/heads/${branchName}`, { method: "DELETE", headers }).catch(() => {});
+          const e = await metaRes.json().catch(() => ({}));
+          return NextResponse.json({ error: `Failed to create source metadata: ${(e as { message?: string }).message || metaRes.statusText}` }, { status: 502 });
+        }
+      }
+
+      // Create document file
+      const fr = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${docFilePath}`, {
         method: "PUT", headers,
         body: JSON.stringify({ message: `Add ${title} by ${contributor || "anonymous"}`, content: base64Content, branch: branchName }),
       });
@@ -161,15 +202,18 @@ export async function POST(request: NextRequest) {
       // Create PR
       const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://julearning.vercel.app";
       const prBody = [`## Document`, ``, `**Title:** ${title}`, `**Type:** ${type}`, `**Contributor:** ${contributor || "anonymous"}`, `**Source:** ${sourceFolder}`];
-      if (sourceFolder === "jammu-university") {
+      if (isNewSource) {
+        prBody.push(`**New Source:** ${sourceName}`, `**Source URL:** ${sourceUrl || ""}`);
+      }
+      if (!isNewSource && sourceFolder === "jammu-university") {
         prBody.push(`**Branch:** ${branch}`, `**Semester:** ${semester}`, `**Subject:** ${subject}`);
       }
-      prBody.push(``, `**File:** \`${filePath}\``, ``, `---`, `_Created via [JU Learning](${siteUrl}/contribute)_`);
+      prBody.push(``, `**File:** \`${docFilePath}\``, ``, `---`, `_Created via [JU Learning](${siteUrl}/contribute)_`);
 
       const prR = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls`, {
         method: "POST", headers,
         body: JSON.stringify({
-          title: `Add: ${title} (${type})`,
+          title: `${isNewSource ? "New source:" : "Add:"} ${isNewSource ? sourceName : title} (${type})`,
           head: branchName, base: "main",
           body: prBody.join("\n"),
         }),
@@ -179,13 +223,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `Failed to create PR: ${(e as { message?: string }).message || prR.statusText}` }, { status: 502 });
       }
       const prData: { html_url: string; number: number } = await prR.json();
-      return NextResponse.json({ success: true, prUrl: prData.html_url, prNumber: prData.number, filePath });
+      return NextResponse.json({ success: true, prUrl: prData.html_url, prNumber: prData.number, filePath: docFilePath, metaFilePath });
     }
 
-    // BULK mode
+    // BULK mode (unchanged)
     const { contributor: bulkContributor, docs } = parsed;
 
-    // Group docs by subject
     const groups = new Map<string, { title: string; url: string; type: string; contributor: string }[]>();
     for (const doc of docs) {
       const key = doc.subject.trim().toLowerCase();
@@ -200,7 +243,6 @@ export async function POST(request: NextRequest) {
     const branchName = `contribute/bulk-${timestamp}`;
     const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://julearning.vercel.app";
 
-    // Create branch
     const br = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs`, {
       method: "POST", headers,
       body: JSON.stringify({ ref: `refs/heads/${branchName}`, sha: mainSha }),
@@ -210,7 +252,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Failed to create branch: ${(e as { message?: string }).message || br.statusText}` }, { status: 502 });
     }
 
-    // For bulk with no specific branch/semester, place in a "bulk" folder
     const filePaths: string[] = [];
     for (const [subjectKey, subjectDocs] of groups.entries()) {
       const subjectSlug = sanitizeSlug(subjectKey);
@@ -230,7 +271,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create PR
     const prR = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls`, {
       method: "POST", headers,
       body: JSON.stringify({
@@ -251,8 +291,4 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     return NextResponse.json({ error: `Internal error: ${err instanceof Error ? err.message : "Unknown"}` }, { status: 500 });
   }
-}
-
-function sanitizeSlug(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
 }

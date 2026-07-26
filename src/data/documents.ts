@@ -9,8 +9,10 @@
 
 export {
   documents,
+  sources,
   getUniqueBranches,
   getUniqueSubjects,
   getUniqueSemesters,
   getDocumentsByBranch,
 } from "./generated-documents";
+export type { SourceMeta } from "./generated-documents";

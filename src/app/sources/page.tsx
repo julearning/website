@@ -1,38 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { documents } from "@/data/documents";
+import { documents, sources } from "@/data/documents";
+import type { SourceMeta } from "@/data/documents";
 
 export const metadata: Metadata = {
   title: "Sources — JU Learning",
-  description: "All content sources available on JU Learning. Discover study materials from Jammu University, OpenStax, Project Gutenberg, and more.",
+  description: "All content sources available on JU Learning. Discover study materials from various open repositories.",
 };
 
-const SOURCE_INFO: Record<string, { name: string; description: string; url: string }> = {
-  "jammu-university": {
-    name: "Jammu University",
-    description: "Notes, PYQs, and assignments contributed by JU students and alumni. Covers the B.Tech curriculum across all branches and semesters.",
-    url: "https://jammuuniversity.ac.in/",
-  },
-  "open-textbook-library": {
-    name: "Open Textbook Library",
-    description: "Openly licensed textbooks reviewed by faculty from across the US. Covers engineering, mathematics, and science subjects.",
-    url: "https://open.umn.edu/opentextbooks/",
-  },
-  "openstax": {
-    name: "OpenStax",
-    description: "Free peer-reviewed textbooks from Rice University. CC BY-NC-SA licensed. High-quality math, science, and engineering references.",
-    url: "https://openstax.org/",
-  },
-  "project-gutenberg": {
-    name: "Project Gutenberg",
-    description: "Out-of-copyright books digitized by volunteers. Includes classic works in mathematics, computer science, and engineering.",
-    url: "https://www.gutenberg.org/",
-  },
-  "wikibooks": {
-    name: "Wikibooks",
-    description: "Open-content textbooks from the Wikimedia Foundation. Community-written and freely available under Creative Commons.",
-    url: "https://en.wikibooks.org/",
-  },
+/* Jammu University gets a hardcoded entry since it's always present */
+const JU_SOURCE: SourceMeta = {
+  id: "jammu-university",
+  name: "Jammu University",
+  description: "Notes, PYQs, and assignments contributed by JU students and alumni. Covers the B.Tech curriculum across all branches and semesters.",
+  url: "https://jammuuniversity.ac.in/",
 };
 
 export default function SourcesPage() {
@@ -43,11 +24,11 @@ export default function SourcesPage() {
     sourceCounts.set(s, (sourceCounts.get(s) || 0) + 1);
   }
 
-  const sources = Object.entries(SOURCE_INFO).map(([id, info]) => ({
-    id,
-    ...info,
-    count: sourceCounts.get(id) || 0,
-  }));
+  // Combine hardcoded JU + dynamic sources from metadata
+  const allSources: (SourceMeta & { count: number })[] = [
+    { ...JU_SOURCE, count: sourceCounts.get("jammu-university") || 0 },
+    ...sources.map((s) => ({ ...s, count: sourceCounts.get(s.id) || 0 })),
+  ];
 
   return (
     <main className="mx-auto max-w-6xl px-6 pb-16">
@@ -61,7 +42,7 @@ export default function SourcesPage() {
       </div>
 
       <div className="mt-16 space-y-6">
-        {sources.map((source) => (
+        {allSources.map((source) => (
           <div key={source.id} className="bg-surface p-8 transition-all duration-300 hover:bg-brand group">
             <div className="flex items-start justify-between">
               <div>
