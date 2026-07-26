@@ -7,6 +7,7 @@ import type { Branch, Document } from "@/lib/types";
 import { getThumbnailUrl } from "@/lib/types";
 import { getReportUrl } from "@/lib/report";
 import { SearchHero } from "@/components/SearchHero";
+import { RevealSection } from "@/components/RevealSection";
 
 const CATEGORY_SECTIONS = [
   { tag: "pyq", title: "Previous Year Questions", subtitle: "Past exam papers from all semesters" },
@@ -183,7 +184,7 @@ export default function Home() {
         {/* Category Sections: PYQs, Handwritten, Digital Notes */}
         {categoryDocs.map((cat) =>
           cat.docs.length > 0 ? (
-            <section key={cat.tag} id={cat.tag}>
+            <RevealSection key={cat.tag} id={cat.tag}>
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-foreground">{cat.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{cat.subtitle}</p>
@@ -193,13 +194,13 @@ export default function Home() {
                   <CategoryCard key={doc.id} doc={doc} />
                 ))}
               </div>
-            </section>
+            </RevealSection>
           ) : null
         )}
 
         {/* Contributors */}
         {topContributors.length > 0 && (
-          <section>
+          <RevealSection delay={0.1}>
             <h2 className="mb-6 text-lg font-semibold text-foreground">Top Contributors</h2>
             <p className="mb-4 text-sm text-muted-foreground">Students who have shared study materials with the community.</p>
             <div className="flex flex-wrap gap-3">
@@ -207,21 +208,21 @@ export default function Home() {
                 <ContributorCard key={username} username={username} count={count} />
               ))}
             </div>
-          </section>
+          </RevealSection>
         )}
 
         {/* Recently Added */}
-        <section>
+        <RevealSection delay={0.15}>
           <h2 className="mb-6 text-lg font-semibold text-foreground">Recently Added</h2>
           <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
             {recentDocs.map((doc) => (
               <CategoryCard key={doc.id} doc={doc} />
             ))}
           </div>
-        </section>
+        </RevealSection>
 
         {/* Browse by Branch */}
-        <section>
+        <RevealSection delay={0.2}>
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Browse by Branch</h2>
             <Link href="/branches" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -247,10 +248,10 @@ export default function Home() {
               );
             })}
           </div>
-        </section>
+        </RevealSection>
 
         {/* Browse by Semester */}
-        <section>
+        <RevealSection delay={0.25}>
           <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Semester</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
             {allSemesters.map((sem) => {
@@ -267,10 +268,10 @@ export default function Home() {
               );
             })}
           </div>
-        </section>
+        </RevealSection>
 
         {/* Browse by Subject */}
-        <section>
+        <RevealSection delay={0.3}>
           <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Subject</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {topSubjects.map((subject) => {
@@ -290,7 +291,7 @@ export default function Home() {
               );
             })}
           </div>
-        </section>
+        </RevealSection>
       </div>
     </main>
   );

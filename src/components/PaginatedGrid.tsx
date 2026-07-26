@@ -59,9 +59,27 @@ export function PaginatedGrid<T>({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center py-16 text-center">
-        {emptyIcon}
-        <p className="text-base text-muted-foreground">{emptyMessage || "Nothing here yet."}</p>
+      <div className="flex flex-col items-center py-20 text-center">
+        {emptyIcon || (
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="mb-4 h-12 w-12 text-muted-foreground/20"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+            <path d="M8 11h6" />
+            <path d="M11 8v6" />
+          </svg>
+        )}
+        <p className="text-base font-medium text-muted-foreground">{emptyMessage || "Nothing here yet."}</p>
+        <p className="mt-2 text-sm text-muted-foreground/50">
+          Try broadening your search or removing some filters.
+        </p>
       </div>
     );
   }

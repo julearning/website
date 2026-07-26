@@ -69,7 +69,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     setIsLoading(false);
   }
 
-  // Debounced auto-search: triggers 3s after the user stops typing
+  // Debounced auto-search: triggers 1s after the user stops typing
   const debouncedSearch = (q: string) => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -252,7 +252,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
           {!isLoading && (
             <p className="mb-4 text-sm text-muted-foreground">
               {results.length} result{results.length !== 1 ? "s" : ""}
-              {isFocused && query.trim() && <span className="ml-2 text-muted-foreground/40">· auto-searching in 3s</span>}
+                           {isFocused && query.trim() && !isLoading && <span className="ml-2 text-muted-foreground/40">· auto-searching in 1s</span>}
             </p>
           )}
 
