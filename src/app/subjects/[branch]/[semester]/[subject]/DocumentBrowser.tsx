@@ -37,7 +37,7 @@ export function DocumentBrowser({ docs, subject }: Props) {
     if (query.trim()) {
       const filters: FilterState = {
         query, branch: null, semester: null, subject: null,
-        tags: [], sort: "relevance",
+        tags: [], sources: [], sort: "relevance",
       };
       filtered = searchDocuments(filtered, filters).map((r) => r.doc);
     }
@@ -47,7 +47,7 @@ export function DocumentBrowser({ docs, subject }: Props) {
   return (
     <>
       <div className="mb-6 max-w-md">
-        <div className="flex items-center bg-white ring-1 ring-border/30 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand/20 px-4">
+        <div className="flex items-center bg-surface ring-1 ring-border/30 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand/20 px-4">
           <input
             type="text"
             value={query}

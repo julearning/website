@@ -100,7 +100,19 @@ function scanDir(dir) {
   return allFiles;
 }
 
-function flattenDocuments(jsonFiles) {
+/**
+ * Extract the source name from a file path relative to the clone root.
+ * Uses the first directory segment as the source.
+ * E.g., "jammu-university/btech/cse/semester-4/..." → "jammu-university"
+ *        "open-textbook-library/calculus/..." → "open-textbook-library"
+ */
+function inferSource(filePath, cloneRoot) {
+  const relative = path.relative(cloneRoot, filePath);
+  const segments = relative.split(path.sep).filter(Boolean);
+  return segments[0] || "unknown";
+}
+
+function flattenDocuments(jsonFiles, cloneRoot) {
   const docs = [];
   let idCounter = 1;
 
@@ -108,6 +120,7 @@ function flattenDocuments(jsonFiles) {
     try {
       const raw = fs.readFileSync(filePath, "utf-8");
       const data = JSON.parse(raw);
+      const source = inferSource(filePath, cloneRoot);
 
       if (isAtomicDoc(data)) {
         // --- ATOMIC format: one file = one document ---
@@ -134,6 +147,7 @@ function flattenDocuments(jsonFiles) {
           language: data.language || "English",
           pages: data.pages,
           downloads: data.downloads,
+          source,
         });
       } else if (data.subject && data.branch && data.semester !== undefined) {
         // --- LEGACY format: subject-level with sections ---
@@ -175,6 +189,7 @@ function flattenDocuments(jsonFiles) {
                 language: doc.language || "English",
                 pages: doc.pages,
                 downloads: doc.downloads,
+                source,
               });
             }
           }
@@ -237,7 +252,7 @@ try {
   const jsonFiles = scanDir(CLONE_DIR);
   console.log(`Found ${jsonFiles.length} JSON files`);
 
-  const docs = flattenDocuments(jsonFiles);
+  const docs = flattenDocuments(jsonFiles, CLONE_DIR);
   console.log(`Flattened into ${docs.length} documents`);
 
   const content = generateFile(docs);

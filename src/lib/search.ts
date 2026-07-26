@@ -74,7 +74,7 @@ export function searchDocuments(
   docs: Document[],
   filters: FilterState,
 ): SearchResult[] {
-  const { query, branch, semester, subject, tags, sort } = filters;
+  const { query, branch, semester, subject, tags, sources, sort } = filters;
 
   // Apply filters first
   let filtered = [...docs];
@@ -88,6 +88,9 @@ export function searchDocuments(
   }
   if (tags.length > 0) {
     filtered = filtered.filter((d) => tags.every((t) => d.tags.includes(t)));
+  }
+  if (sources.length > 0) {
+    filtered = filtered.filter((d) => sources.includes(d.source));
   }
 
   // If no query, sort and return

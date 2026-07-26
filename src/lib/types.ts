@@ -17,6 +17,7 @@ export interface Document {
   language?: string;
   pages?: number;
   downloads?: number;
+  source: string;
 }
 
 export type Branch = "CSE" | "ECE" | "EE" | "ME" | "CE";
@@ -57,6 +58,7 @@ export type FilterState = {
   semester: number | null;
   subject: string | null;
   tags: string[];
+  sources: string[];
   sort: "relevance" | "newest" | "oldest" | "name" | "size";
 };
 

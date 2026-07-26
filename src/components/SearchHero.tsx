@@ -8,6 +8,7 @@ import { ResultCard } from "@/components/ResultCard";
 import { PaginatedGrid } from "@/components/PaginatedGrid";
 import { SortDropdown, type SortOption } from "@/components/SortDropdown";
 import { FilterDropdown } from "@/components/FilterDropdown";
+import { SourceDropdown, type SourceOption } from "@/components/SourceDropdown";
 
 interface SearchHeroProps {
   title?: string;
@@ -24,12 +25,22 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
   const [isFocused, setIsFocused] = useState(false);
   const [sort, setSort] = useState<SortOption>("relevance");
   const [activeTags, setActiveTags] = useState<string[]>(defaultTags ?? []);
+  const [activeSources, setActiveSources] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function performSearch(q: string, sortOverride?: SortOption, tagsOverride?: string[]) {
-    // Allow empty query when tags are active (shows all docs matching tags)
-    if (!q.trim() && (tagsOverride ?? activeTags).length === 0) {
+  // Compute available sources from documents
+  const availableSources: SourceOption[] = useMemo(() => {
+    const sourceSet = new Set(documents.map((d) => d.source));
+    return Array.from(sourceSet).sort().map((id) => ({
+      id,
+      label: id === "jammu-university" ? "Jammu University" : id,
+    }));
+  }, []);
+
+  async function performSearch(q: string, sortOverride?: SortOption, tagsOverride?: string[], sourcesOverride?: string[]) {
+    // Allow empty query when tags or sources are active (shows all docs matching filters)
+    if (!q.trim() && (tagsOverride ?? activeTags).length === 0 && (sourcesOverride ?? activeSources).length === 0) {
       setResults([]);
       setHasSearched(false);
       return;
@@ -42,6 +53,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
 
     const currentSort = sortOverride ?? sort;
     const currentTags = tagsOverride ?? activeTags;
+    const currentSources = sourcesOverride ?? activeSources;
 
     const filters: FilterState = {
       query: q,
@@ -49,6 +61,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
       semester: null,
       subject: null,
       tags: currentTags,
+      sources: currentSources,
       sort: currentSort,
     };
     const found = searchDocuments(documents, filters);
@@ -135,6 +148,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     setHasSearched(false);
     setSort("relevance");
     setActiveTags(defaultTags ?? []);
+    setActiveSources([]);
     inputRef.current?.focus();
   }
 
@@ -149,6 +163,13 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     setActiveTags(newTags);
     if (hasSearched && query.trim()) {
       performSearch(query, undefined, newTags);
+    }
+  }
+
+  function handleSourcesChange(newSources: string[]) {
+    setActiveSources(newSources);
+    if (hasSearched && query.trim()) {
+      performSearch(query, undefined, undefined, newSources);
     }
   }
 
@@ -212,10 +233,17 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
             )}
           </div>
 
-          {/* Sort & Filter — right under the search bar, tight gap */}
+          {/* Sort, Filter, Source — right under the search bar, tight gap */}
           <div className="flex items-center justify-end gap-1 pt-2">
             <SortDropdown value={sort} onChange={handleSortChange} />
             <FilterDropdown activeTags={activeTags} onChange={handleTagsChange} />
+            {availableSources.length > 1 && (
+              <SourceDropdown
+                availableSources={availableSources}
+                activeSources={activeSources}
+                onChange={handleSourcesChange}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -233,7 +261,7 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
           {isLoading ? (
             <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="mb-5 animate-pulse break-inside-avoid overflow-hidden bg-white">
+                <div key={i} className="mb-5 animate-pulse break-inside-avoid overflow-hidden bg-surface">
                   <div className="h-56 bg-accent" />
                   <div className="p-4">
                     <div className="mb-2 h-4 w-3/4 bg-accent/50" />
