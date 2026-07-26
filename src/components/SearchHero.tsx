@@ -154,23 +154,21 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
 
   function handleSortChange(newSort: SortOption) {
     setSort(newSort);
-    if (hasSearched && query.trim()) {
+    if (hasSearched && (query.trim() || activeTags.length > 0 || activeSources.length > 0)) {
       performSearch(query, newSort);
     }
   }
 
   function handleTagsChange(newTags: string[]) {
     setActiveTags(newTags);
-    if (hasSearched && query.trim()) {
-      performSearch(query, undefined, newTags);
-    }
+    // Always search when tags change — shows docs matching tags even without a query
+    performSearch(query, undefined, newTags);
   }
 
   function handleSourcesChange(newSources: string[]) {
     setActiveSources(newSources);
-    if (hasSearched && query.trim()) {
-      performSearch(query, undefined, undefined, newSources);
-    }
+    // Always search when sources change — shows docs from selected sources even without a query
+    performSearch(query, undefined, undefined, newSources);
   }
 
   return (
