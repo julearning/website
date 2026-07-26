@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/branches", label: "Branches" },
   { href: "/subjects", label: "Subjects" },
   { href: "/degree", label: "Degree" },
+  { href: "/contributors", label: "Contributors" },
 ];
 
 export function Navbar() {

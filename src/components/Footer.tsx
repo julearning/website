@@ -35,18 +35,18 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/degree"
+                  href="/subjects"
                   className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  Degrees
+                  Subjects
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/"
+                  href="/contributors"
                   className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  Search
+                  Contributors
                 </Link>
               </li>
             </ul>

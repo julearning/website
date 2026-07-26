@@ -8,6 +8,7 @@ import { getThumbnailUrl } from "@/lib/types";
 import { getReportUrl } from "@/lib/report";
 import { SearchHero } from "@/components/SearchHero";
 import { RevealSection } from "@/components/RevealSection";
+import { ContributorCircle } from "@/components/ContributorCircle";
 
 const CATEGORY_SECTIONS = [
   { tag: "pyq", title: "Previous Year Questions", subtitle: "Past exam papers from all semesters" },
@@ -34,8 +35,8 @@ export default function Home() {
     }));
   }, []);
 
-  // Contributor leaderboard: count documents per contributor, take top 8
-  const topContributors = useMemo(() => {
+  // Contributor leaderboard: count documents per contributor
+  const allContributors = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const doc of documents) {
       const c = doc.contributor || "unknown";
@@ -43,9 +44,10 @@ export default function Home() {
     }
     return Object.entries(counts)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 8)
       .map(([username, count]) => ({ username, count }));
   }, []);
+
+  const topContributors = allContributors.slice(0, 8);
 
   const branches = getUniqueBranches();
   const allSemesters = [...new Set(documents.map((d) => d.semester))].sort((a, b) => a - b);
@@ -292,6 +294,13 @@ export default function Home() {
             })}
           </div>
         </RevealSection>
+
+        {/* JU Learning is all of us */}
+        {allContributors.length > 0 && (
+          <RevealSection delay={0.35}>
+            <ContributorCircle contributors={allContributors} />
+          </RevealSection>
+        )}
       </div>
     </main>
   );
