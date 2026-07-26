@@ -1,73 +1,70 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { documents, getUniqueSubjects } from "@/data/documents";
+import { documents } from "@/data/documents";
 import { SearchHero } from "@/components/SearchHero";
 
 export const metadata: Metadata = {
   title: "Subjects — JU Learning",
   description:
-    "Browse all subjects available across every engineering branch. Find notes, PYQs, and study materials by subject name.",
+    "Browse B.Tech subjects from Jammu University. Find notes, PYQs, and study materials by subject.",
 };
 
 export default function SubjectsPage() {
-  const subjects = getUniqueSubjects();
+  // Only JU documents have valid branch/semester for browse navigation
+  const juDocs = documents.filter((d) => d.source === "jammu-university");
 
-  // Build a map: subject → { docCount, branches: Set<branch>, semesters: Set<semester> }
+  // Build a map: subject → { docCount, branch, semester }
+  // Since each subject lives in one branch+semester (JU curriculum), use the first match
   const subjectMap = new Map<
     string,
-    { docCount: number; branches: Set<string>; semesters: Set<number> }
+    { docCount: number; branch: string; semester: number }
   >();
-  for (const doc of documents) {
+  for (const doc of juDocs) {
     if (!subjectMap.has(doc.subject)) {
       subjectMap.set(doc.subject, {
         docCount: 0,
-        branches: new Set(),
-        semesters: new Set(),
+        branch: doc.branch,
+        semester: doc.semester,
       });
     }
     const entry = subjectMap.get(doc.subject)!;
     entry.docCount++;
-    if (doc.branch) entry.branches.add(doc.branch);
-    if (doc.semester != null) entry.semesters.add(doc.semester);
   }
+
+  const subjects = [...subjectMap.entries()].sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <main className="mx-auto max-w-6xl px-6 pb-16">
-      <SearchHero title="All Subjects" subtitle="Browse study materials organized by subject." />
+      <SearchHero title="All Subjects" subtitle="B.Tech subjects from Jammu University curriculum." />
 
-      <div className="mt-12 grid grid-cols-2 gap-6 lg:grid-cols-3">
-        {subjects.map((subject) => {
-          const info = subjectMap.get(subject)!;
-          const branchesList = [...info.branches].sort().join(", ");
-          const semRange =
-            info.semesters.size === 1
-              ? `Semester ${[...info.semesters][0]}`
-              : `Semesters ${Math.min(...info.semesters)}–${Math.max(...info.semesters)}`;
+      {subjects.length === 0 ? (
+        <p className="mt-12 text-center text-sm text-muted-foreground">No subjects found.</p>
+      ) : (
+        <div className="mt-12 grid grid-cols-2 gap-6 lg:grid-cols-3">
+          {subjects.map(([subject, info]) => {
+            const branchSlug = info.branch?.toLowerCase() || "cse";
+            const sem = info.semester ?? 1;
 
-          // Link to the subject's page — use the first branch that offers it
-          const sortedBranches = [...info.branches].filter(Boolean).sort();
-          const firstBranch = sortedBranches[0]?.toLowerCase() || "cse";
-          const firstSem = info.semesters.size > 0 ? Math.min(...info.semesters) : 1;
-
-          return (
-            <Link
-              key={subject}
-              href={`/subjects/${firstBranch}/${firstSem}/${encodeURIComponent(subject)}`}
-              className="group bg-white p-7 transition-all duration-300 hover:bg-brand"
-            >
-              <h2 className="text-xl font-bold text-foreground transition-colors duration-300 group-hover:text-white">
-                {subject}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
-                {info.docCount} document{info.docCount !== 1 ? "s" : ""}
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground/40 transition-colors duration-300 group-hover:text-white/60">
-                {branchesList} · {semRange}
-              </p>
-            </Link>
-          );
-        })}
-      </div>
+            return (
+              <Link
+                key={subject}
+                href={`/subjects/${branchSlug}/${sem}/${encodeURIComponent(subject)}`}
+                className="group bg-white p-7 transition-all duration-300 hover:bg-brand"
+              >
+                <h2 className="text-xl font-bold text-foreground transition-colors duration-300 group-hover:text-white">
+                  {subject}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">
+                  {info.docCount} document{info.docCount !== 1 ? "s" : ""}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground/40 transition-colors duration-300 group-hover:text-white/60">
+                  {info.branch} · Semester {sem}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </main>
   );
 }

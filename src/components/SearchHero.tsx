@@ -3,13 +3,14 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { documents } from "@/data/documents";
 import { searchDocuments, type SearchResult } from "@/lib/search";
-import type { FilterState, DocType } from "@/lib/types";
+import type { FilterState, DocType, Branch } from "@/lib/types";
 import { TYPE_LABELS } from "@/lib/types";
 import { ResultCard } from "@/components/ResultCard";
 import { PaginatedGrid } from "@/components/PaginatedGrid";
 import { SortDropdown, type SortOption } from "@/components/SortDropdown";
 import { TypeFilter } from "@/components/TypeFilter";
 import { SourceDropdown, type SourceOption } from "@/components/SourceDropdown";
+import { FilterDropdown } from "@/components/FilterDropdown";
 
 interface SearchHeroProps {
   title?: string;
@@ -65,8 +66,26 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
   const [sort, setSort] = useState<SortOption>("relevance");
   const [activeType, setActiveType] = useState<DocType | null>(defaultType ?? null);
   const [activeSources, setActiveSources] = useState<string[]>([]);
+  const [activeBranch, setActiveBranch] = useState<string | null>(null);
+  const [activeSemester, setActiveSemester] = useState<number | null>(null);
+  const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Compute filter options from JU documents
+  const juDocs = useMemo(() => documents.filter((d) => d.source === "jammu-university"), []);
+
+  const availableBranches = useMemo(() => {
+    return [...new Set(juDocs.map((d) => d.branch).filter(Boolean))].sort() as string[];
+  }, [juDocs]);
+
+  const availableSemesters = useMemo(() => {
+    return [...new Set(juDocs.map((d) => d.semester).filter((s): s is number => s != null))].sort((a, b) => a - b);
+  }, [juDocs]);
+
+  const availableSubjects = useMemo(() => {
+    return [...new Set(juDocs.map((d) => d.subject).filter(Boolean))].sort();
+  }, [juDocs]);
 
   // Compute available sources from documents
   const availableSources: SourceOption[] = useMemo(() => {
@@ -82,8 +101,17 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     }));
   }, []);
 
-  async function performSearch(q: string, sortOverride?: SortOption, typeOverride?: DocType | null, sourcesOverride?: string[]) {
-    if (!q.trim() && !(typeOverride ?? activeType) && (sourcesOverride ?? activeSources).length === 0) {
+  async function performSearch(
+    q: string,
+    sortOverride?: SortOption,
+    typeOverride?: DocType | null,
+    sourcesOverride?: string[],
+    branchOverride?: string | null,
+    semesterOverride?: number | null,
+    subjectOverride?: string | null
+  ) {
+    const qTrim = q.trim();
+    if (!qTrim && !(typeOverride ?? activeType) && (sourcesOverride ?? activeSources).length === 0 && !(branchOverride ?? activeBranch) && !(semesterOverride ?? activeSemester) && !(subjectOverride ?? activeSubject)) {
       setResults([]);
       setHasSearched(false);
       return;
@@ -93,18 +121,14 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
 
     await new Promise((r) => setTimeout(r, 200));
 
-    const currentSort = sortOverride ?? sort;
-    const currentType = typeOverride ?? activeType;
-    const currentSources = sourcesOverride ?? activeSources;
-
     const filters: FilterState = {
       query: q,
-      branch: null,
-      semester: null,
-      subject: null,
-      types: currentType ? [currentType] : [],
-      sources: currentSources,
-      sort: currentSort,
+      branch: (branchOverride ?? activeBranch) as Branch | null,
+      semester: semesterOverride ?? activeSemester,
+      subject: subjectOverride ?? activeSubject,
+      types: (typeOverride ?? activeType) ? [(typeOverride ?? activeType)!] : [],
+      sources: sourcesOverride ?? activeSources,
+      sort: sortOverride ?? sort,
     };
     const found = searchDocuments(documents, filters);
     setResults(found);
@@ -186,6 +210,9 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
     setSort("relevance");
     setActiveType(defaultType ?? null);
     setActiveSources([]);
+    setActiveBranch(null);
+    setActiveSemester(null);
+    setActiveSubject(null);
     inputRef.current?.focus();
   }
 
@@ -199,6 +226,24 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
   function handleTypeChange(newType: DocType | null) {
     setActiveType(newType);
     performSearch(query, undefined, newType);
+  }
+
+  function handleBranchChange(branch: string | null) {
+    setActiveBranch(branch);
+    setActiveSemester(null); // reset dependent filters
+    setActiveSubject(null);
+    performSearch(query, undefined, undefined, undefined, branch, null, null);
+  }
+
+  function handleSemesterChange(semester: number | null) {
+    setActiveSemester(semester);
+    setActiveSubject(null); // reset subject when semester changes
+    performSearch(query, undefined, undefined, undefined, undefined, semester, null);
+  }
+
+  function handleSubjectChange(subject: string | null) {
+    setActiveSubject(subject);
+    performSearch(query, undefined, undefined, undefined, undefined, undefined, subject);
   }
 
   function handleSourcesChange(newSources: string[]) {
@@ -266,10 +311,31 @@ export function SearchHero({ title = "JU Learning", subtitle = "Every branch. Ev
             )}
           </div>
 
-          {/* Sort, Type filter, Source — under the search bar */}
-          <div className="flex items-center justify-end gap-1 pt-2">
+          {/* Filters — under the search bar */}
+          <div className="flex flex-wrap items-center justify-end gap-1 pt-2">
             <SortDropdown value={sort} onChange={handleSortChange} />
             <TypeFilter activeType={activeType} onChange={handleTypeChange} />
+            <FilterDropdown
+              label="Branch"
+              options={availableBranches}
+              active={activeBranch}
+              placeholder="All Branches"
+              onChange={handleBranchChange}
+            />
+            <FilterDropdown
+              label="Sem"
+              options={availableSemesters.map((s) => String(s))}
+              active={activeSemester !== null ? String(activeSemester) : null}
+              placeholder="All Sems"
+              onChange={(val) => handleSemesterChange(val !== null ? Number(val) : null)}
+            />
+            <FilterDropdown
+              label="Subject"
+              options={availableSubjects}
+              active={activeSubject}
+              placeholder="All Subjects"
+              onChange={handleSubjectChange}
+            />
             {availableSources.length > 1 && (
               <SourceDropdown
                 availableSources={availableSources}

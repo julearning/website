@@ -49,9 +49,12 @@ export default function Home() {
 
   const topContributors = allContributors.slice(0, 8);
 
+  // Only JU content for browse navigation — other sources appear only in search
+  const juDocs = useMemo(() => documents.filter((d) => d.source === "jammu-university"), []);
+
   const branches = getUniqueBranches();
-  const allSemesters = [...new Set(documents.map((d) => d.semester).filter((s): s is number => s != null))].sort((a, b) => a - b);
-  const allSubjects = [...new Set(documents.map((d) => d.subject).filter(Boolean))].sort();
+  const allSemesters = [...new Set(juDocs.map((d) => d.semester).filter((s): s is number => s != null))].sort((a, b) => a - b);
+  const allSubjects = [...new Set(juDocs.map((d) => d.subject).filter(Boolean))].sort();
   const topSubjects = allSubjects.slice(0, 12);
 
   function formatDate(dateStr: string | undefined) {
@@ -255,45 +258,57 @@ export default function Home() {
         {/* Browse by Semester */}
         <RevealSection delay={0.25}>
           <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Semester</h2>
+          <p className="mb-4 text-sm text-muted-foreground">Select your branch first to see semester-specific materials.</p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
             {allSemesters.map((sem) => {
-              const docCount = documents.filter((d) => d.semester === sem).length;
+              // Count JU docs in this semester across all branches
+              const semDocs = juDocs.filter((d) => d.semester === sem);
+              const branchesInSem = [...new Set(semDocs.map((d) => d.branch))];
               return (
                 <Link
                   key={sem}
-                  href={`/semesters/cse/${sem}`}
+                  href="/branches"
                   className="group bg-surface p-6 text-center transition-all duration-300 hover:bg-brand"
                 >
                   <p className="text-2xl font-semibold text-foreground transition-colors duration-300 group-hover:text-white">{sem}</p>
-                  <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} docs</p>
+                  <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{semDocs.length} docs</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground/40 transition-colors duration-300 group-hover:text-white/60">{branchesInSem.length} branch{branchesInSem.length !== 1 ? "es" : ""}</p>
                 </Link>
               );
             })}
           </div>
         </RevealSection>
 
-        {/* Browse by Subject */}
-        <RevealSection delay={0.3}>
-          <h2 className="mb-6 text-lg font-semibold text-foreground">Browse by Subject</h2>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {topSubjects.map((subject) => {
-              const docCount = documents.filter((d) => d.subject === subject).length;
-              const firstDoc = documents.find((d) => d.subject === subject);
-              const branchSlug = firstDoc?.branch?.toLowerCase() || "cse";
-              const sem = firstDoc?.semester ?? 1;
-              return (
-                <Link
-                  key={subject}
-                  href={`/subjects/${branchSlug}/${sem}/${encodeURIComponent(subject)}`}
-                  className="group bg-surface p-6 text-left transition-all duration-300 hover:bg-brand"
-                >
-                  <p className="text-base font-medium text-foreground transition-colors duration-300 group-hover:text-white">{subject}</p>
-                  <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} documents</p>
-                </Link>
-              );
-            })}
-          </div>
-        </RevealSection>
+        {/* Browse by Subject — only JU subjects with valid branch+semester */}
+        {topSubjects.length > 0 && (
+          <RevealSection delay={0.3}>
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Browse by Subject</h2>
+              <Link href="/subjects" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                View all →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {topSubjects.map((subject) => {
+                const juSubjectDocs = juDocs.filter((d) => d.subject === subject);
+                const docCount = juSubjectDocs.length;
+                const firstDoc = juSubjectDocs[0];
+                const branchSlug = firstDoc?.branch?.toLowerCase() || "cse";
+                const sem = firstDoc?.semester ?? 1;
+                return (
+                  <Link
+                    key={subject}
+                    href={`/subjects/${branchSlug}/${sem}/${encodeURIComponent(subject)}`}
+                    className="group bg-surface p-6 text-left transition-all duration-300 hover:bg-brand"
+                  >
+                    <p className="text-base font-medium text-foreground transition-colors duration-300 group-hover:text-white">{subject}</p>
+                    <p className="mt-1 text-sm text-muted-foreground/60 transition-colors duration-300 group-hover:text-white/70">{docCount} documents</p>
+                  </Link>
+                );
+              })}
+            </div>
+          </RevealSection>
+        )}
 
         {/* JU Learning is all of us */}
         {allContributors.length > 0 && (
