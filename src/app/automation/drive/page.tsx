@@ -486,6 +486,21 @@ export default function DriveAutomationPage() {
           </div>
         </div>
       )}
+      {/* Link to contribution guide */}
+      <div className="mt-16 border-t border-border/10 pt-8 text-center">
+        <p className="text-sm text-muted-foreground">
+          First time here? Read the{" "}
+          <a
+            href="https://github.com/julearning/metadata/blob/main/CONTRIBUTING.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-brand font-semibold underline transition-opacity hover:opacity-70"
+          >
+            contribution guide
+          </a>
+          {" "}to understand how metadata files work and how to submit them.
+        </p>
+      </div>
     </main>
   );
 }
