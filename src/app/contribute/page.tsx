@@ -43,14 +43,26 @@ async function validateGithub(username: string): Promise<{ valid: boolean; messa
 }
 
 /**
- * Returns a validation error string, or null if valid.
+ * Checks if a Drive URL actually points to a real file by trying to load its thumbnail.
+ * Uses Image() to avoid CORS issues with fetch.
  */
-function validateDriveUrl(url: string): string | null {
-  if (!url.trim()) return null;
-  if (!DRIVE_PATTERN.test(url.trim())) {
-    return "Must be a Google Drive or Docs link";
+async function checkDriveUrl(url: string): Promise<{ exists: boolean; message: string }> {
+  if (!url.trim()) return { exists: false, message: "" };
+  const id = url.match(/(?:\/d\/|id=)([\w-]{25,})/)?.[1];
+  if (!id) return { exists: false, message: "Could not extract file ID from URL" };
+  try {
+    const exists = await new Promise<boolean>((resolve) => {
+      const img = new Image();
+      const timer = setTimeout(() => resolve(false), 8000);
+      img.onload = () => { clearTimeout(timer); resolve(true); };
+      img.onerror = () => { clearTimeout(timer); resolve(false); };
+      img.src = `https://drive.google.com/thumbnail?id=${id}&sz=w50`;
+    });
+    if (exists) return { exists: true, message: "Drive file reachable" };
+    return { exists: false, message: "File not found or not accessible on Drive" };
+  } catch {
+    return { exists: false, message: "Could not verify — proceed anyway" };
   }
-  return null;
 }
 
 export default function ContributePage() {
@@ -72,7 +84,8 @@ export default function ContributePage() {
   const [subjectMode, setSubjectMode] = useState<"dropdown" | "custom">("dropdown");
 
   // Validation state
-  const [urlError, setUrlError] = useState<string | null>(null);
+  const [urlStatus, setUrlStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+  const [urlMessage, setUrlMessage] = useState("");
   const [ghStatus, setGhStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
   const [ghMessage, setGhMessage] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -108,14 +121,28 @@ export default function ContributePage() {
   const resolvedSemester = semesterMode === "custom" ? (customSemester ? Number(customSemester) : null) : (semester || null);
   const resolvedSubject = subjectMode === "custom" ? customSubject.trim() : subject;
 
-  // Validate Drive URL on change with debounce
+  // Validate Drive URL on change with debounce + reachability check
   const urlTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   function handleUrlChange(val: string) {
     setUrl(val);
     if (urlTimer.current) clearTimeout(urlTimer.current);
-    urlTimer.current = setTimeout(() => {
-      setUrlError(validateDriveUrl(val));
-    }, 400);
+    if (!val.trim()) {
+      setUrlStatus("idle");
+      setUrlMessage("");
+      return;
+    }
+    if (!DRIVE_PATTERN.test(val.trim())) {
+      setUrlStatus("invalid");
+      setUrlMessage("Must use a Google Drive or Docs link");
+      return;
+    }
+    setUrlStatus("checking");
+    setUrlMessage("Checking reachability...");
+    urlTimer.current = setTimeout(async () => {
+      const result = await checkDriveUrl(val);
+      setUrlStatus(result.exists ? "valid" : "invalid");
+      setUrlMessage(result.message);
+    }, 500);
   }
 
   // Validate GitHub username on change with debounce
@@ -148,7 +175,7 @@ export default function ContributePage() {
   const canSubmit =
     title.trim()
     && url.trim()
-    && !urlError
+    && urlStatus !== "invalid"
     && resolvedBranch
     && resolvedSemester
     && resolvedSubject
@@ -200,7 +227,8 @@ export default function ContributePage() {
     setErrorMsg("");
     setTitle("");
     setUrl("");
-    setUrlError(null);
+    setUrlStatus("idle");
+    setUrlMessage("");
     setDocType("mixed");
     setContributor("");
     setGhStatus("idle");
@@ -296,22 +324,22 @@ export default function ContributePage() {
                     )}
                   </>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div>
                     <input
                       type="text"
                       value={customBranch}
                       onChange={(e) => setCustomBranch(e.target.value)}
                       onBlur={() => markTouched("branch")}
                       placeholder="e.g., ECE"
-                      className="flex-1 border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
+                      className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
                       autoFocus
                     />
                     <button
                       type="button"
                       onClick={() => { setBranchMode("dropdown"); setCustomBranch(""); }}
-                      className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                      className="mt-2 text-xs font-semibold text-muted-foreground/50 transition-colors hover:text-foreground"
                     >
-                      Back
+                      ← Back to branches
                     </button>
                   </div>
                 )}
@@ -352,7 +380,7 @@ export default function ContributePage() {
                     )}
                   </>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div>
                     <input
                       type="number"
                       min={1}
@@ -361,15 +389,15 @@ export default function ContributePage() {
                       onChange={(e) => setCustomSemester(e.target.value)}
                       onBlur={() => markTouched("semester")}
                       placeholder="e.g., 5"
-                      className="flex-1 border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
+                      className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
                       autoFocus
                     />
                     <button
                       type="button"
                       onClick={() => { setSemesterMode("dropdown"); setCustomSemester(""); }}
-                      className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                      className="mt-2 text-xs font-semibold text-muted-foreground/50 transition-colors hover:text-foreground"
                     >
-                      Back
+                      ← Back to semesters
                     </button>
                   </div>
                 )}
@@ -408,22 +436,22 @@ export default function ContributePage() {
                     )}
                   </>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div>
                     <input
                       type="text"
                       value={customSubject}
                       onChange={(e) => setCustomSubject(e.target.value)}
                       onBlur={() => markTouched("subject")}
                       placeholder="e.g., Machine Learning"
-                      className="flex-1 border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
+                      className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30"
                       autoFocus
                     />
                     <button
                       type="button"
                       onClick={() => { setSubjectMode("dropdown"); setCustomSubject(""); }}
-                      className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                      className="mt-2 text-xs font-semibold text-muted-foreground/50 transition-colors hover:text-foreground"
                     >
-                      Back
+                      ← Back to subjects
                     </button>
                   </div>
                 )}
@@ -465,17 +493,31 @@ export default function ContributePage() {
                   onBlur={() => markTouched("url")}
                   placeholder="https://drive.google.com/file/d/..."
                   className={`w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 transition-all focus:ring-2 ${
-                    touched.url && urlError
+                    touched.url && urlStatus === "invalid"
                       ? "ring-red-300 focus:ring-red-400"
                       : "ring-border/30 focus:ring-brand/30"
                   }`}
                 />
-                {touched.url && urlError && (
-                  <p className="mt-1 text-xs text-red-500">{urlError}</p>
-                )}
-                {touched.url && url.trim() && !urlError && (
-                  <p className="mt-1 text-xs text-green-600">Valid Google Drive link format</p>
-                )}
+                <div className="mt-1 flex items-center gap-1.5">
+                  {urlStatus === "checking" && (
+                    <>
+                      <svg className="h-3 w-3 animate-spin text-muted-foreground/50" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+                        <path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" />
+                      </svg>
+                      <span className="text-xs text-muted-foreground/60">{urlMessage}</span>
+                    </>
+                  )}
+                  {touched.url && urlStatus === "valid" && (
+                    <span className="text-xs text-brand/80">{urlMessage}</span>
+                  )}
+                  {touched.url && urlStatus === "invalid" && (
+                    <span className="text-xs text-red-500">{urlMessage}</span>
+                  )}
+                  {touched.url && urlStatus === "idle" && !url.trim() && (
+                    <span className="text-xs text-red-500">Required</span>
+                  )}
+                </div>
               </div>
 
               {/* Type + Contributor side by side */}

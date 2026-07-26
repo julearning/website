@@ -37,3 +37,5 @@ src/data/generated-documents.ts
 
 node_modules/
 .next/
+.env
+.env/
