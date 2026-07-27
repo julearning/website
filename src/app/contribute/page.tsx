@@ -565,6 +565,7 @@ export default function ContributePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border/20 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                      <th className="px-3 py-3 font-normal w-8"></th>
                       <th className="px-3 py-3 font-normal">#</th>
                       <th className="px-3 py-3 font-normal">File</th>
                       <th className="px-3 py-3 font-normal min-w-[140px]">Type</th>
@@ -574,6 +575,16 @@ export default function ContributePage() {
                   <tbody>
                     {rows.map((row, i) => (
                       <tr key={row.id} className="border-b border-border/10 transition-colors hover:bg-accent/30">
+                        <td className="px-3 py-3">
+                          <a href={row.url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+                            title="View document">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                              <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                          </a>
+                        </td>
                         <td className="px-3 py-3 text-xs text-muted-foreground/50">{i + 1}</td>
                         <td className="px-3 py-3 max-w-[280px]"><p className="truncate font-medium text-foreground">{row.title}</p></td>
                         <td className="px-3 py-3">
