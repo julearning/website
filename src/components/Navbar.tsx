@@ -3,11 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Settings } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 import { getAllDegrees } from "@/data/documents";
 import { hasPreferences } from "@/lib/preferences";
-import { SettingsPanel } from "@/components/SettingsPanel";
 
 function getNavItems(): Array<{ href: string; label: string; icon?: React.ReactNode }> {
   const degrees = getAllDegrees();
@@ -25,7 +24,6 @@ function getNavItems(): Array<{ href: string; label: string; icon?: React.ReactN
 export function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [savedPrefsExist, setSavedPrefsExist] = useState(false);
 
   // Close menu on route change
@@ -91,7 +89,7 @@ export function Navbar() {
           )}
         </button>
 
-        {/* Logo — centered-ish on mobile, left on desktop */}
+        {/* Logo — left on desktop, centered-ish on mobile */}
         <Link
           href="/"
           className="text-3xl font-extrabold tracking-tight text-foreground transition-opacity hover:opacity-70 md:text-4xl"
@@ -111,25 +109,16 @@ export function Navbar() {
               {item.label}
             </Link>
           ))}
-        </nav>
-
-        {/* Settings gear + panel — wrapped together so panel anchors to gear position */}
-        <div className="relative">
-          <button
-            onClick={() => setSettingsOpen(!settingsOpen)}
-            className="relative flex h-10 w-10 items-center justify-center text-muted-foreground/50 transition-all duration-200 hover:text-foreground"
-            aria-label="Settings"
+          <Link
+            href="/settings"
+            className={`flex items-center gap-1.5 rounded-none px-4 py-3 text-xl font-semibold transition-all duration-200 hover:bg-accent ${isPageActive("/settings")}`}
           >
-            <Settings className="h-5 w-5" />
+            Preferences
             {savedPrefsExist && (
-              <span className="absolute right-2 top-2 h-2 w-2 bg-brand" />
+              <span className="h-2 w-2 bg-brand" />
             )}
-          </button>
-          <SettingsPanel
-            open={settingsOpen}
-            onClose={() => setSettingsOpen(false)}
-          />
-        </div>
+          </Link>
+        </nav>
 
         {/* Spacer for mobile to keep logo centered */}
         <div className="w-8 lg:hidden" />
@@ -156,19 +145,16 @@ export function Navbar() {
             ))}
             <div className="my-4 h-px bg-border/10" />
             <div className="flex items-center justify-between py-4">
-              <button
-                onClick={() => {
-                  setSettingsOpen(!settingsOpen);
-                  closeMenu();
-                }}
+              <Link
+                href="/settings"
+                onClick={closeMenu}
                 className="flex items-center gap-2 text-2xl font-bold text-foreground transition-opacity hover:opacity-60"
               >
-                <Settings className="h-6 w-6" />
                 Preferences
                 {savedPrefsExist && (
                   <span className="h-2 w-2 bg-brand" />
                 )}
-              </button>
+              </Link>
               <a
                 href="https://github.com/julearning"
                 target="_blank"
