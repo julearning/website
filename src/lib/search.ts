@@ -36,14 +36,14 @@ function singleWordScore(doc: {
   // Branch match
   if (branch.includes(word)) return 0.5;
 
-  // Word-level partial match in title
-  const titleWords = title.split(/\s+/);
+  // Word-level partial match in title (skip empty strings)
+  const titleWords = title.split(/\s+/).filter(Boolean);
   for (const tw of titleWords) {
     if (tw.startsWith(word) || word.startsWith(tw)) return 0.3;
   }
 
-  // Word-level partial match in subject
-  const subjectWords = subject.split(/\s+/);
+  // Word-level partial match in subject (skip empty strings)
+  const subjectWords = subject.split(/\s+/).filter(Boolean);
   for (const sw of subjectWords) {
     if (sw.startsWith(word) || word.startsWith(sw)) return 0.45;
   }

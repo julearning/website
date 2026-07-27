@@ -395,7 +395,11 @@ export function SearchHero({
       setActiveType(defaultType ?? null);
     }
     setActiveSources(newSources);
-    performSearch(query, undefined, undefined, newSources);
+    // Only search if there's an actual query — changing sources with an empty
+    // search bar should not trigger results
+    if (query.trim()) {
+      performSearch(query, undefined, undefined, newSources);
+    }
   }
 
   // ── Cascade Handlers ───────────────────────────────────────────
@@ -730,12 +734,20 @@ export function SearchHero({
       {hasSearched && (
         <div className="mt-8">
           {!isLoading && (
-            <p className="mb-4 text-sm text-muted-foreground">
-              {results.length} result{results.length !== 1 ? "s" : ""}
-              {isFocused && query.trim() && !isLoading && (
-                <span className="ml-2 text-muted-foreground/40">· auto-searching in 1s</span>
-              )}
-            </p>
+            <div className="mb-4 flex items-center gap-3">
+              <p className="text-sm text-muted-foreground">
+                {results.length} result{results.length !== 1 ? "s" : ""}
+                {isFocused && query.trim() && !isLoading && (
+                  <span className="ml-2 text-muted-foreground/40">· auto-searching in 1s</span>
+                )}
+              </p>
+              <button
+                onClick={handleClear}
+                className="text-xs font-semibold text-muted-foreground/50 underline underline-offset-4 transition-colors hover:text-foreground"
+              >
+                Clear results
+              </button>
+            </div>
           )}
 
           {isLoading ? (
