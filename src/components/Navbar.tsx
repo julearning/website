@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Settings } from "lucide-react";
 
 import { getAllDegrees } from "@/data/documents";
+import { hasPreferences } from "@/lib/preferences";
+import { SettingsPanel } from "@/components/SettingsPanel";
 
 function getNavItems(): Array<{ href: string; label: string; icon?: React.ReactNode }> {
   const degrees = getAllDegrees();
@@ -23,11 +25,21 @@ function getNavItems(): Array<{ href: string; label: string; icon?: React.ReactN
 export function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [savedPrefsExist, setSavedPrefsExist] = useState(false);
 
   // Close menu on route change
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  // Check if preferences exist (for the indicator dot)
+  useEffect(() => {
+    setSavedPrefsExist(hasPreferences());
+    const handler = () => setSavedPrefsExist(hasPreferences());
+    window.addEventListener("julearning-preferences-changed", handler);
+    return () => window.removeEventListener("julearning-preferences-changed", handler);
+  }, []);
 
   // Compute dynamic nav items
   const navItems = getNavItems();
@@ -101,6 +113,24 @@ export function Navbar() {
           ))}
         </nav>
 
+        {/* Settings gear + panel — wrapped together so panel anchors to gear position */}
+        <div className="relative">
+          <button
+            onClick={() => setSettingsOpen(!settingsOpen)}
+            className="relative flex h-10 w-10 items-center justify-center text-muted-foreground/50 transition-all duration-200 hover:text-foreground"
+            aria-label="Settings"
+          >
+            <Settings className="h-5 w-5" />
+            {savedPrefsExist && (
+              <span className="absolute right-2 top-2 h-2 w-2 bg-brand" />
+            )}
+          </button>
+          <SettingsPanel
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+          />
+        </div>
+
         {/* Spacer for mobile to keep logo centered */}
         <div className="w-8 lg:hidden" />
       </div>
@@ -126,6 +156,19 @@ export function Navbar() {
             ))}
             <div className="my-4 h-px bg-border/10" />
             <div className="flex items-center justify-between py-4">
+              <button
+                onClick={() => {
+                  setSettingsOpen(!settingsOpen);
+                  closeMenu();
+                }}
+                className="flex items-center gap-2 text-2xl font-bold text-foreground transition-opacity hover:opacity-60"
+              >
+                <Settings className="h-6 w-6" />
+                Preferences
+                {savedPrefsExist && (
+                  <span className="h-2 w-2 bg-brand" />
+                )}
+              </button>
               <a
                 href="https://github.com/julearning"
                 target="_blank"

@@ -14,6 +14,7 @@ interface SingleDoc {
   sourceName?: string;
   sourceDescription?: string;
   sourceUrl?: string;
+  sourceThumbnailUrl?: string;
   branch: string;
   semester: number;
   subject: string;
@@ -55,6 +56,7 @@ function validate(body: unknown): { ok: true; mode: "single"; data: SingleDoc } 
         typeof b.contributor !== "string") {
       return { ok: false, error: "Missing or invalid fields. Required: sourceName, sourceUrl, title, url, type, contributor." };
     }
+    // thumbnailUrl is optional for new sources
   } else if (source === "jammu-university") {
     if (typeof b.title !== "string" || !b.title.trim().length ||
         typeof b.url !== "string" || !b.url.trim().length ||
@@ -123,7 +125,7 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
 
     if (parsed.mode === "single") {
-      const { title, url, thumbnailUrl, type, contributor, source, isNewSource, sourceName, sourceDescription, sourceUrl, branch, semester, subject } = parsed.data;
+      const { title, url, thumbnailUrl, type, contributor, source, isNewSource, sourceName, sourceDescription, sourceUrl, sourceThumbnailUrl, branch, semester, subject } = parsed.data;
       const ghUser = contributor.toLowerCase().replace(/[^a-z0-9-]/g, "") || "anonymous";
       const branchName = `contribute/${Date.now()}`;
       const sourceFolder = source || "jammu-university";
@@ -175,6 +177,7 @@ export async function POST(request: NextRequest) {
           name: sourceName?.trim(),
           description: sourceDescription?.trim() || `${sourceName?.trim()} resources`,
           url: sourceUrl?.trim(),
+          thumbnailUrl: sourceThumbnailUrl?.trim() || thumbnailUrl?.trim() || undefined,
         }, null, 2);
         const metaBase64 = Buffer.from(metaContent, "utf-8").toString("base64");
         const metaRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${metaFilePath}`, {

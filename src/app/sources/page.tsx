@@ -44,16 +44,33 @@ export default function SourcesPage() {
       <div className="mt-16 space-y-6">
         {allSources.map((source) => (
           <div key={source.id} className="bg-surface p-8 transition-all duration-300 hover:bg-brand group">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground transition-colors duration-300 group-hover:text-white">
-                  {source.name}
-                </h2>
-                <p className="mt-2 text-sm text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70 max-w-2xl">
-                  {source.description}
-                </p>
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex items-start gap-5 min-w-0">
+                {/* Source thumbnail */}
+                {source.thumbnailUrl ? (
+                  <div className="shrink-0 w-16 h-16 overflow-hidden bg-accent">
+                    <img
+                      src={source.thumbnailUrl}
+                      alt={source.name}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : (
+                  <div className="shrink-0 w-16 h-16 flex items-center justify-center bg-accent/50 text-xl font-bold text-muted-foreground/30 transition-colors duration-300 group-hover:text-white/30">
+                    {source.name.charAt(0)}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h2 className="text-2xl font-bold text-foreground transition-colors duration-300 group-hover:text-white">
+                    {source.name}
+                  </h2>
+                  <p className="mt-2 text-sm text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70 max-w-2xl">
+                    {source.description}
+                  </p>
+                </div>
               </div>
-              <p className="text-lg font-bold text-foreground transition-colors duration-300 group-hover:text-white whitespace-nowrap ml-6">
+              <p className="text-lg font-bold text-foreground transition-colors duration-300 group-hover:text-white whitespace-nowrap shrink-0">
                 {source.count}
               </p>
             </div>

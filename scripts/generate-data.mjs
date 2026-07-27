@@ -75,6 +75,11 @@ function isSourceMeta(data) {
   return data && typeof data === "object" && !Array.isArray(data) && data.name && data.description && data.url;
 }
 
+/** Check if a URL is a Google Drive/Docs link with a file ID we can thumbnail */
+function isDriveUrl(url) {
+  return /\/(?:file|document|spreadsheets|presentation)\/d\/([^/]+)\//.test(url);
+}
+
 function scanDir(dir) {
   const allFiles = [];
 
@@ -183,6 +188,7 @@ function isLegacySubject(data) {
 function flattenDocuments(jsonFiles, cloneRoot) {
   const docs = [];
   const sources = [];
+  const sourceThumbnailMap = new Map();
   let idCounter = 1;
 
   for (const filePath of jsonFiles) {
@@ -193,12 +199,18 @@ function flattenDocuments(jsonFiles, cloneRoot) {
 
       // --- Format 0: Source metadata file (e.g. wikibooks.json in other-sources/) ---
       if (isSourceMeta(data)) {
+        const thumbnailUrl = data.thumbnailUrl || "";
         sources.push({
           id: source,
           name: data.name,
           description: data.description,
           url: data.url,
+          thumbnailUrl,
         });
+        // Track source thumbnail for backfilling document thumbnails
+        if (thumbnailUrl) {
+          sourceThumbnailMap.set(source, thumbnailUrl);
+        }
         continue;
       }
 
@@ -342,6 +354,21 @@ function flattenDocuments(jsonFiles, cloneRoot) {
     }
   }
 
+  // Backfill thumbnails for non-JU documents: use the source's thumbnail
+  // (individual files never have their own thumbnail — source thumbnail is used instead)
+  // For Google Drive links, dynamic thumbnail via getThumbnailUrl() works for any source
+  for (const doc of docs) {
+    if (doc.source !== "jammu-university" && !doc.thumbnailUrl) {
+      // If it's a Google Drive link, the dynamic thumbnail works for any source
+      if (isDriveUrl(doc.url)) {
+        doc.thumbnailUrl = getThumbnailUrl(doc.url);
+      } else {
+        // Use the source's own thumbnail image
+        doc.thumbnailUrl = sourceThumbnailMap.get(doc.source) || "";
+      }
+    }
+  }
+
   return { docs, sources };
 }
 
@@ -359,6 +386,7 @@ function generateFile({ docs, sources }) {
     '  name: string;',
     '  description: string;',
     '  url: string;',
+    '  thumbnailUrl?: string;',
     "}",
     "",
     "export const sources: SourceMeta[] = " + JSON.stringify(sources, null, 2) + ";",

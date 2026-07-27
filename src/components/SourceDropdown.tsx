@@ -17,7 +17,9 @@ export function SourceDropdown({ availableSources, activeSources, onChange }: Pr
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const allSelected = activeSources.length === 0 || activeSources.length === availableSources.length;
+  // All sources explicitly selected = "show all".
+  // No implicit "all" state — each source toggles independently.
+  const allSelected = activeSources.length === availableSources.length;
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -30,23 +32,15 @@ export function SourceDropdown({ availableSources, activeSources, onChange }: Pr
   }, []);
 
   function toggleSource(id: string) {
-    if (allSelected) {
-      // If all are selected, switch to only this one
-      onChange([id]);
+    if (activeSources.includes(id)) {
+      // Click to deselect — remove from filter
+      const next = activeSources.filter((s) => s !== id);
+      // If no sources are left, reset to all (show everything)
+      onChange(next.length === 0 ? availableSources.map((s) => s.id) : next);
     } else {
-      // Toggle individual
-      if (activeSources.includes(id)) {
-        const next = activeSources.filter((s) => s !== id);
-        onChange(next.length === 0 ? availableSources.map((s) => s.id) : next);
-      } else {
-        const next = [...activeSources, id];
-        // If all now selected, default to empty (all)
-        if (next.length === availableSources.length) {
-          onChange([]);
-        } else {
-          onChange(next);
-        }
-      }
+      // Click to select — add to filter
+      const next = [...activeSources, id];
+      onChange(next.length === availableSources.length ? availableSources.map((s) => s.id) : next);
     }
   }
 
@@ -55,6 +49,10 @@ export function SourceDropdown({ availableSources, activeSources, onChange }: Pr
     : activeSources.length === 1
       ? (availableSources.find((s) => s.id === activeSources[0])?.label || activeSources[0])
       : `${activeSources.length} Sources`;
+
+  function isSourceActive(id: string): boolean {
+    return activeSources.includes(id);
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -77,23 +75,23 @@ export function SourceDropdown({ availableSources, activeSources, onChange }: Pr
       {open && (
         <div className="absolute right-0 top-full z-20 mt-1 min-w-[200px] bg-surface py-1 ring-1 ring-border/30">
           {availableSources.map((source) => {
-            const isActive = allSelected || activeSources.includes(source.id);
+            const active = isSourceActive(source.id);
             return (
               <button
                 key={source.id}
                 onClick={() => toggleSource(source.id)}
                 className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors hover:bg-accent ${
-                  isActive ? "text-foreground" : "text-muted-foreground"
+                  active ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
                 <span
                   className={`flex h-4 w-4 items-center justify-center border text-[9px] font-bold transition-colors ${
-                    isActive
+                    active
                       ? "border-brand bg-brand text-white"
                       : "border-border text-transparent"
                   }`}
                 >
-                  {isActive ? "✓" : ""}
+                  {active ? "✓" : ""}
                 </span>
                 {source.label}
               </button>

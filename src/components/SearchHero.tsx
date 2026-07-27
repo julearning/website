@@ -20,6 +20,7 @@ import {
   type DegreeInfo,
 } from "@/lib/hierarchy";
 import { slugify, deslugifyDegree } from "@/lib/slugs";
+import { loadPreferences } from "@/lib/preferences";
 import { useRouter } from "next/navigation";
 
 interface SearchHeroProps {
@@ -125,7 +126,15 @@ export function SearchHero({
   const [isFocused, setIsFocused] = useState(false);
   const [sort, setSort] = useState<SortOption>("relevance");
   const [activeType, setActiveType] = useState<DocType | null>(defaultType ?? null);
-  const [activeSources, setActiveSources] = useState<string[]>(defaultSource ? [defaultSource] : []);
+  // Initialize with all source IDs by default — each source toggles independently
+  // (no implicit "all" state that causes unexpected deselection)
+  const allSourceIds = useMemo(
+    () => [...new Set(documents.map((d) => d.source))],
+    [],
+  );
+  const [activeSources, setActiveSources] = useState<string[]>(
+    defaultSource ? [defaultSource] : allSourceIds,
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -167,6 +176,10 @@ export function SearchHero({
   const selectedSource = activeSources.length === 1 ? activeSources[0] : null;
   const title = propTitle || (selectedSource ? getSourceTitle(selectedSource) : "JU Learning");
   const subtitle = propSubtitle || (selectedSource ? getSourceSubtitle(selectedSource) : "Every branch. Every semester. Every note.");
+
+  // Cascade (degree/branch/semester) only shows when jammu-university source is active
+  // Other sources are flat (no hierarchy), so the cascade is meaningless
+  const jammuActive = activeSources.includes("jammu-university");
 
   // Compute available sources from documents
   const availableSources: SourceOption[] = useMemo(() => {
@@ -282,6 +295,33 @@ export function SearchHero({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultSource]);
 
+  // Load saved preferences from localStorage on mount
+  // React 18 batches all state updates in effects, so all three are applied in one render
+  useEffect(() => {
+    const prefs = loadPreferences();
+    if (prefs.degree) {
+      setSelectedDegree(prefs.degree);
+      if (prefs.branch) setSelectedBranch(prefs.branch);
+      if (prefs.semester != null) setSelectedSemester(prefs.semester);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Listen for preference changes from the SettingsPanel (in navbar)
+  useEffect(() => {
+    function onPrefsChanged() {
+      const prefs = loadPreferences();
+      setSelectedDegree(prefs.degree);
+      setSelectedBranch(prefs.degree ? prefs.branch : null);
+      setSelectedSemester(prefs.degree && prefs.branch ? prefs.semester : null);
+      setSelectedSubject(null);
+      setActiveType(defaultType ?? null);
+    }
+    window.addEventListener("julearning-preferences-changed", onPrefsChanged);
+    return () => window.removeEventListener("julearning-preferences-changed", onPrefsChanged);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -322,7 +362,7 @@ export function SearchHero({
     setHasSearched(false);
     setSort("relevance");
     setActiveType(defaultType ?? null);
-    setActiveSources(defaultSource ? [defaultSource] : []);
+    setActiveSources(defaultSource ? [defaultSource] : allSourceIds);
     setSelectedDegree(null);
     setSelectedBranch(null);
     setSelectedSemester(null);
@@ -343,6 +383,17 @@ export function SearchHero({
   }
 
   function handleSourcesChange(newSources: string[]) {
+    // When jammu-university is removed from active sources, clear the cascade
+    // (other sources don't have degree/branch/semester hierarchy)
+    const juWasActive = activeSources.includes("jammu-university");
+    const juNowActive = newSources.includes("jammu-university");
+    if (juWasActive && !juNowActive) {
+      setSelectedDegree(null);
+      setSelectedBranch(null);
+      setSelectedSemester(null);
+      setSelectedSubject(null);
+      setActiveType(defaultType ?? null);
+    }
     setActiveSources(newSources);
     performSearch(query, undefined, undefined, newSources);
   }
@@ -492,183 +543,186 @@ export function SearchHero({
           </div>
 
           {/* ── Progressive Cascade ─────────────────────────────────── */}
-          <div className="mt-8 text-left">
-            {/* Breadcrumb-style indicator */}
-            {hasAnySelection && (
-              <div className="mb-5 flex flex-wrap items-center gap-2 text-sm">
-                <button
-                  onClick={() => {
-                    setSelectedDegree(null);
-                    setSelectedBranch(null);
-                    setSelectedSemester(null);
-                    setSelectedSubject(null);
-                    setActiveType(defaultType ?? null);
-                    setResults([]);
-                    setHasSearched(false);
-                  }}
-                  className="font-bold text-muted-foreground/60 hover:text-foreground transition-colors"
-                >
-                  Browse
-                </button>
-                {selectedDegree && (
-                  <>
-                    <span className="text-muted-foreground/30">/</span>
-                    <span className="font-bold text-foreground">
-                      {deslugifyDegree(selectedDegree)}
-                    </span>
-                  </>
-                )}
-                {selectedBranch && (
-                  <>
-                    <span className="text-muted-foreground/30">/</span>
-                    <span className="font-bold text-foreground">{selectedBranch}</span>
-                  </>
-                )}
-                {selectedSemester != null && (
-                  <>
-                    <span className="text-muted-foreground/30">/</span>
-                    <span className="font-bold text-foreground">Sem {selectedSemester}</span>
-                  </>
-                )}
-                {selectedSubject && (
-                  <>
-                    <span className="text-muted-foreground/30">/</span>
-                    <span className="font-bold text-foreground">{selectedSubject}</span>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Step 1: Degree (always starts here — user must choose) */}
-            {degrees.length > 0 && (
-              <div className="mb-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
-                  {!selectedDegree ? "Select your degree" : "Degree"}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {degrees.map((deg) => (
-                    <SelectionChip
-                      key={deg.id}
-                      label={deg.name}
-                      active={selectedDegree === deg.id}
-                      onClick={() => handleDegreeClick(deg.id)}
-                      size="md"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Branch */}
-            {selectedDegree && branches.length > 0 && (
-              <div className="mb-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
-                  {!selectedBranch ? "Select your branch" : "Branch"}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {branches.map((branch) => (
-                    <SelectionChip
-                      key={branch}
-                      label={branch}
-                      active={selectedBranch === branch}
-                      onClick={() => handleBranchClick(branch)}
-                      size="lg"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Semester */}
-            {selectedBranch && semesters.length > 0 && (
-              <div className="mb-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
-                  {selectedSemester == null ? "Select your semester" : "Semester"}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {semesters.map((sem) => (
-                    <SelectionChip
-                      key={sem}
-                      label={`Semester ${sem}`}
-                      active={selectedSemester === sem}
-                      onClick={() => handleSemesterClick(sem)}
-                      size="md"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Subject */}
-            {selectedSemester != null && subjects.length > 0 && (
-              <div className="mb-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
-                  {!selectedSubject ? "Select your subject" : "Subject"}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {subjects.map((subj) => (
-                    <SelectionChip
-                      key={subj}
-                      label={subj}
-                      active={selectedSubject === subj}
-                      onClick={() => handleSubjectClick(subj)}
-                      size="md"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Type filter (only when subject selected) */}
-            {selectedSubject && types.length > 1 && (
-              <div className="mb-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
-                  Filter by type
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <SelectionChip
-                    label="All"
-                    active={activeType === null}
-                    onClick={() => handleTypeChange(null)}
-                    size="md"
-                  />
-                  {types.map((t) => (
-                    <SelectionChip
-                      key={t}
-                      label={TYPE_LABELS[t] || t}
-                      active={activeType === t}
-                      onClick={() => handleTypeChange(t as DocType)}
-                      size="md"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* View full page button */}
-            {selectedDegree && selectedBranch && (
-              <div className="mt-5">
-                <button
-                  onClick={handleBrowseToPage}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-bold text-sm transition-all duration-200 hover:opacity-90"
-                >
-                  View all{" "}
-                  {selectedBranch}
-                  {selectedSemester != null ? ` Sem ${selectedSemester}` : ""}
-                  {selectedSubject ? ` · ${selectedSubject}` : ""}
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
+          {/* Only shown when jammu-university is active — other sources are flat (no hierarchy) */}
+          {jammuActive && (
+            <div className="mt-8 text-left">
+              {/* Breadcrumb-style indicator */}
+              {hasAnySelection && (
+                <div className="mb-5 flex flex-wrap items-center gap-2 text-sm">
+                  <button
+                    onClick={() => {
+                      setSelectedDegree(null);
+                      setSelectedBranch(null);
+                      setSelectedSemester(null);
+                      setSelectedSubject(null);
+                      setActiveType(defaultType ?? null);
+                      setResults([]);
+                      setHasSearched(false);
+                    }}
+                    className="font-bold text-muted-foreground/60 hover:text-foreground transition-colors"
                   >
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            )}
-          </div>
+                    Browse
+                  </button>
+                  {selectedDegree && (
+                    <>
+                      <span className="text-muted-foreground/30">/</span>
+                      <span className="font-bold text-foreground">
+                        {deslugifyDegree(selectedDegree)}
+                      </span>
+                    </>
+                  )}
+                  {selectedBranch && (
+                    <>
+                      <span className="text-muted-foreground/30">/</span>
+                      <span className="font-bold text-foreground">{selectedBranch}</span>
+                    </>
+                  )}
+                  {selectedSemester != null && (
+                    <>
+                      <span className="text-muted-foreground/30">/</span>
+                      <span className="font-bold text-foreground">Sem {selectedSemester}</span>
+                    </>
+                  )}
+                  {selectedSubject && (
+                    <>
+                      <span className="text-muted-foreground/30">/</span>
+                      <span className="font-bold text-foreground">{selectedSubject}</span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Step 1: Degree (always starts here — user must choose) */}
+              {degrees.length > 0 && (
+                <div className="mb-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
+                    {!selectedDegree ? "Select your degree" : "Degree"}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {degrees.map((deg) => (
+                      <SelectionChip
+                        key={deg.id}
+                        label={deg.name}
+                        active={selectedDegree === deg.id}
+                        onClick={() => handleDegreeClick(deg.id)}
+                        size="md"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Branch */}
+              {selectedDegree && branches.length > 0 && (
+                <div className="mb-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
+                    {!selectedBranch ? "Select your branch" : "Branch"}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {branches.map((branch) => (
+                      <SelectionChip
+                        key={branch}
+                        label={branch}
+                        active={selectedBranch === branch}
+                        onClick={() => handleBranchClick(branch)}
+                        size="lg"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Semester */}
+              {selectedBranch && semesters.length > 0 && (
+                <div className="mb-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
+                    {selectedSemester == null ? "Select your semester" : "Semester"}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {semesters.map((sem) => (
+                      <SelectionChip
+                        key={sem}
+                        label={`Semester ${sem}`}
+                        active={selectedSemester === sem}
+                        onClick={() => handleSemesterClick(sem)}
+                        size="md"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Subject */}
+              {selectedSemester != null && subjects.length > 0 && (
+                <div className="mb-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
+                    {!selectedSubject ? "Select your subject" : "Subject"}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {subjects.map((subj) => (
+                      <SelectionChip
+                        key={subj}
+                        label={subj}
+                        active={selectedSubject === subj}
+                        onClick={() => handleSubjectClick(subj)}
+                        size="md"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 5: Type filter (only when subject selected) */}
+              {selectedSubject && types.length > 1 && (
+                <div className="mb-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
+                    Filter by type
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <SelectionChip
+                      label="All"
+                      active={activeType === null}
+                      onClick={() => handleTypeChange(null)}
+                      size="md"
+                    />
+                    {types.map((t) => (
+                      <SelectionChip
+                        key={t}
+                        label={TYPE_LABELS[t] || t}
+                        active={activeType === t}
+                        onClick={() => handleTypeChange(t as DocType)}
+                        size="md"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* View full page button */}
+              {selectedDegree && selectedBranch && (
+                <div className="mt-5">
+                  <button
+                    onClick={handleBrowseToPage}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-bold text-sm transition-all duration-200 hover:opacity-90"
+                  >
+                    View all{" "}
+                    {selectedBranch}
+                    {selectedSemester != null ? ` Sem ${selectedSemester}` : ""}
+                    {selectedSubject ? ` · ${selectedSubject}` : ""}
+                    <svg
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

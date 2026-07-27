@@ -148,6 +148,7 @@ export default function ContributePage() {
   const [newSourceName, setNewSourceName] = useState("");
   const [newSourceDesc, setNewSourceDesc] = useState("");
   const [newSourceUrl, setNewSourceUrl] = useState("");
+  const [newSourceThumbnail, setNewSourceThumbnail] = useState("");
   const [branch, setBranch] = useState(""); const [customBranch, setCustomBranch] = useState("");
   const [semester, setSemester] = useState<number | "">(""); const [customSemester, setCustomSemester] = useState("");
   const [subject, setSubject] = useState(""); const [customSubject, setCustomSubject] = useState("");
@@ -246,6 +247,7 @@ export default function ContributePage() {
           sourceName: isNewSource ? newSourceName.trim() : undefined,
           sourceDescription: isNewSource ? newSourceDesc.trim() : undefined,
           sourceUrl: isNewSource ? newSourceUrl.trim() : undefined,
+          sourceThumbnailUrl: isNewSource ? newSourceThumbnail.trim() || undefined : undefined,
           title: title.trim(),
           url: url.trim(),
           thumbnailUrl: thumbnailUrl.trim() || undefined,
@@ -299,7 +301,7 @@ export default function ContributePage() {
     if (urlTimer.current) clearTimeout(urlTimer.current); if (ghTimer.current) clearTimeout(ghTimer.current);
     setStatus("idle"); setPrUrl(""); setErrorMsg("");
     setSource("jammu-university");
-    setIsNewSource(false); setNewSourceName(""); setNewSourceDesc(""); setNewSourceUrl("");
+    setIsNewSource(false); setNewSourceName(""); setNewSourceDesc(""); setNewSourceUrl(""); setNewSourceThumbnail("");
     setTitle(""); setUrl(""); setThumbnailUrl(""); setUrlStatus("idle"); setUrlMsg(""); setDocType("mixed");
     setContributor(""); setGhStatus("idle"); setGhMsg("");
     setBranch(""); setCustomBranch(""); setBmode("dropdown");
@@ -381,7 +383,7 @@ export default function ContributePage() {
           {isNewSource && (
             <div className="space-y-4 mb-6">
               <p className="mb-4 text-sm font-semibold text-foreground">New Source Details</p>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Source Name</label>
                   <input type="text" value={newSourceName} onChange={e => setNewSourceName(e.target.value)}
@@ -403,6 +405,12 @@ export default function ContributePage() {
                     placeholder="https://..."
                     className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30" />
                   {touched["newSourceUrl"] && !newSourceUrl.trim() && <p className="mt-1 text-xs text-red-500">Required</p>}
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Thumbnail URL</label>
+                  <input type="url" value={newSourceThumbnail} onChange={e => setNewSourceThumbnail(e.target.value)}
+                    placeholder="https://.../logo.png"
+                    className="w-full border-0 bg-surface px-4 py-3 text-base text-foreground placeholder-muted-foreground/40 outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/30" />
                 </div>
               </div>
             </div>
