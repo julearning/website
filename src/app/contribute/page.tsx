@@ -272,6 +272,10 @@ export default function ContributePage() {
     setRows(prev => prev.map(r => r.id === id ? { ...r, [prop]: value } : r));
   }
 
+  function deleteRow(id: number) {
+    setRows(prev => prev.filter(r => r.id !== id));
+  }
+
   const bulkValid = rows.length > 0 && rows.every(r => r.subject.trim() && r.detectedType);
 
   /* ---------- Bulk: submit to API ---------- */
@@ -576,14 +580,27 @@ export default function ContributePage() {
                     {rows.map((row, i) => (
                       <tr key={row.id} className="border-b border-border/10 transition-colors hover:bg-accent/30">
                         <td className="px-3 py-3">
-                          <a href={row.url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
-                            title="View document">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                              <circle cx="12" cy="12" r="3"/>
-                            </svg>
-                          </a>
+                          <div className="flex items-center gap-1">
+                            <a href={row.url} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+                              title="View document">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                              </svg>
+                            </a>
+                            <button onClick={() => deleteRow(row.id)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:bg-red-50 hover:text-red-500"
+                              title="Remove document">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18"/>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                         <td className="px-3 py-3 text-xs text-muted-foreground/50">{i + 1}</td>
                         <td className="px-3 py-3 max-w-[280px]"><p className="truncate font-medium text-foreground">{row.title}</p></td>
