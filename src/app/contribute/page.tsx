@@ -268,7 +268,8 @@ export default function ContributePage() {
   }
 
   function updateRow(id: number, field: "subject" | "type", value: string) {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: field === "type" ? value : value } : r));
+    const prop = field === "type" ? "detectedType" : "subject";
+    setRows(prev => prev.map(r => r.id === id ? { ...r, [prop]: value } : r));
   }
 
   const bulkValid = rows.length > 0 && rows.every(r => r.subject.trim() && r.detectedType);
