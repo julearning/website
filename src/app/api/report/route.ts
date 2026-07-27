@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     ``,
     `The link above appears to be broken.`,
     `---`,
-    `_Reported via [JU Learning](https://julearning.vercel.app)_`,
+    `_Reported via [JU Learning](https://julearning.com)_`,
   ].filter(Boolean).join("\n");
 
   try {

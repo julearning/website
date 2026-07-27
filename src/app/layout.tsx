@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   description:
     "Open source study materials for B.Tech students. Search notes, PYQs, and more across all branches.",
-  metadataBase: new URL("https://julearning.vercel.app"),
+  metadataBase: new URL("https://julearning.com"),
 };
 
 export default function RootLayout({
