@@ -26,6 +26,9 @@ interface BulkDoc {
   type: string;
   subject: string;
   contributor: string;
+  branch: string;
+  semester: number;
+  degree?: string;
 }
 
 function validate(body: unknown): { ok: true; mode: "single"; data: SingleDoc } | { ok: true; mode: "bulk"; contributor: string; docs: BulkDoc[] } | { ok: false; error: string } {
@@ -39,6 +42,8 @@ function validate(body: unknown): { ok: true; mode: "single"; data: SingleDoc } 
       if (typeof doc.title !== "string" || typeof doc.url !== "string" || typeof doc.type !== "string" || typeof doc.subject !== "string" || typeof doc.contributor !== "string") {
         return { ok: false, error: "Each doc must have title, url, type, subject, contributor" };
       }
+      if (typeof doc.branch !== "string" || !doc.branch.trim().length) return { ok: false, error: "Each doc must have branch" };
+      if (typeof doc.semester !== "number") return { ok: false, error: "Each doc must have semester" };
     }
     return { ok: true, mode: "bulk", contributor: b.contributor as string, docs: b.docs as BulkDoc[] };
   }
@@ -47,7 +52,6 @@ function validate(body: unknown): { ok: true; mode: "single"; data: SingleDoc } 
   const isNewSource = b.isNewSource === true;
 
   if (isNewSource) {
-    // New source: needs sourceName, sourceUrl + title, url, type, contributor
     if (typeof b.sourceName !== "string" || !b.sourceName.trim().length ||
         typeof b.sourceUrl !== "string" || !b.sourceUrl.trim().length ||
         typeof b.title !== "string" || !b.title.trim().length ||
@@ -56,7 +60,6 @@ function validate(body: unknown): { ok: true; mode: "single"; data: SingleDoc } 
         typeof b.contributor !== "string") {
       return { ok: false, error: "Missing or invalid fields. Required: sourceName, sourceUrl, title, url, type, contributor." };
     }
-    // thumbnailUrl is optional for new sources
   } else if (source === "jammu-university") {
     if (typeof b.title !== "string" || !b.title.trim().length ||
         typeof b.url !== "string" || !b.url.trim().length ||
@@ -79,21 +82,37 @@ function validate(body: unknown): { ok: true; mode: "single"; data: SingleDoc } 
   return { ok: true, mode: "single", data: { ...(b as unknown as SingleDoc), source, isNewSource } };
 }
 
-function buildJson(docs: { title: string; url: string; type: string; contributor: string; thumbnailUrl?: string }[]): string {
-  const today = new Date().toISOString().split("T")[0];
-  const entries = docs.map(d => ({
-    title: d.title.trim(),
-    url: d.url.trim(),
-    type: d.type,
-    contributor: d.contributor.trim() || undefined,
-    thumbnailUrl: d.thumbnailUrl || undefined,
-    uploadedAt: today,
-  }));
-  return JSON.stringify(entries, null, 2);
-}
-
 function sanitizeSlug(text: string): string {
   return text.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
+}
+
+/**
+ * Fetch existing file from main, parse its JSON array, append new entries,
+ * and return the merged JSON string + the existing file's SHA (if any).
+ */
+async function mergeWithExisting(
+  filePath: string,
+  newEntries: Record<string, unknown>[],
+  headers: Record<string, string>,
+): Promise<{ json: string; sha: string | undefined }> {
+  const getRes = await fetch(
+    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=main`,
+    { headers },
+  );
+  if (!getRes.ok) {
+    // File doesn't exist yet — just return new entries
+    return { json: JSON.stringify(newEntries, null, 2), sha: undefined };
+  }
+  const getData: { sha: string; content: string; encoding: string } = await getRes.json();
+  const existingContent = Buffer.from(getData.content, getData.encoding as "base64" | "utf-8").toString("utf-8");
+  let merged: Record<string, unknown>[];
+  try {
+    const parsed = JSON.parse(existingContent);
+    merged = Array.isArray(parsed) ? [...parsed, ...newEntries] : newEntries;
+  } catch {
+    merged = newEntries;
+  }
+  return { json: JSON.stringify(merged, null, 2), sha: getData.sha };
 }
 
 export async function POST(request: NextRequest) {
@@ -130,36 +149,38 @@ export async function POST(request: NextRequest) {
       const branchName = `contribute/${Date.now()}`;
       const sourceFolder = source || "jammu-university";
 
-      // Build document JSON content
+      // Build the new entry
       const today = new Date().toISOString().split("T")[0];
-      const entries: Record<string, unknown>[] = [{
+      const newEntry: Record<string, unknown> = {
         title: title.trim(),
         url: url.trim(),
         type,
         contributor: contributor.trim() || undefined,
         uploadedAt: today,
-      }];
-      if (thumbnailUrl) entries[0].thumbnailUrl = thumbnailUrl;
-      if (sourceFolder !== "jammu-university") entries[0].description = type;
-      const jsonContent = JSON.stringify(entries, null, 2);
-      const base64Content = Buffer.from(jsonContent, "utf-8").toString("base64");
+      };
+      if (thumbnailUrl) newEntry.thumbnailUrl = thumbnailUrl;
+      if (sourceFolder !== "jammu-university") newEntry.description = type;
 
       // Determine file paths
       let docFilePath: string;
       let metaFilePath: string | null = null;
 
       if (isNewSource && sourceName) {
-        // New source: create metadata file + doc file in other-sources/{slug}/
         const sourceSlug = sanitizeSlug(sourceName);
         docFilePath = `other-sources/${sourceSlug}/${ghUser}.json`;
         metaFilePath = `other-sources/${sourceSlug}.json`;
       } else if (sourceFolder === "jammu-university") {
         const branchSlug = branch.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const subjectSlug = subject.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-        docFilePath = `jammu-university/btech/${branchSlug}/semester-${semester}/${subjectSlug}/${subjectSlug}-${ghUser}.json`;
+        const cleanSubject = subject.replace(/^Sem\s+\d+\s*/i, "").trim();
+        const subjectSlug = cleanSubject.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+        const folderSlug = `sem-${semester}-${subjectSlug}`;
+        docFilePath = `jammu-university/btech/${branchSlug}/sem-${semester}/${folderSlug}/${folderSlug}.json`;
       } else {
         docFilePath = `other-sources/${sourceFolder}/${ghUser}.json`;
       }
+
+      // Merge with existing content (if file already exists in main)
+      const { json: mergedJson, sha: existingSha } = await mergeWithExisting(docFilePath, [newEntry], headers);
 
       // Create branch
       const br = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs`, {
@@ -191,10 +212,13 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Create document file
+      // Create / update document file
+      const base64Content = Buffer.from(mergedJson, "utf-8").toString("base64");
+      const frBody: Record<string, unknown> = { message: `Add ${title} by ${contributor || "anonymous"}`, content: base64Content, branch: branchName };
+      if (existingSha) frBody.sha = existingSha;
       const fr = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${docFilePath}`, {
         method: "PUT", headers,
-        body: JSON.stringify({ message: `Add ${title} by ${contributor || "anonymous"}`, content: base64Content, branch: branchName }),
+        body: JSON.stringify(frBody),
       });
       if (!fr.ok) {
         await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs/heads/${branchName}`, { method: "DELETE", headers }).catch(() => {});
@@ -229,20 +253,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, prUrl: prData.html_url, prNumber: prData.number, filePath: docFilePath, metaFilePath });
     }
 
-    // BULK mode (unchanged)
+    // BULK mode
     const { contributor: bulkContributor, docs } = parsed;
 
-    const groups = new Map<string, { title: string; url: string; type: string; contributor: string }[]>();
+    type GroupKey = string;
+    function makeGroupKey(doc: BulkDoc): GroupKey {
+      const degree = (doc.degree || "btech").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const branch = doc.branch.toLowerCase().replace(/[^a-z0-9]/g, "");
+      return `${degree}|${branch}|${doc.semester}|${doc.subject.trim().toLowerCase()}`;
+    }
+    const groups = new Map<GroupKey, BulkDoc[]>();
     for (const doc of docs) {
-      const key = doc.subject.trim().toLowerCase();
-      if (!key) continue;
+      const key = makeGroupKey(doc);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(doc);
     }
 
-    if (groups.size === 0) return NextResponse.json({ error: "No valid docs after grouping by subject." }, { status: 400 });
+    if (groups.size === 0) return NextResponse.json({ error: "No valid docs after grouping." }, { status: 400 });
 
-    const ghUser = bulkContributor.toLowerCase().replace(/[^a-z0-9-]/g, "") || "anonymous";
     const branchName = `contribute/bulk-${timestamp}`;
     const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://julearning.vercel.app";
 
@@ -256,16 +284,35 @@ export async function POST(request: NextRequest) {
     }
 
     const filePaths: string[] = [];
-    for (const [subjectKey, subjectDocs] of groups.entries()) {
-      const subjectSlug = sanitizeSlug(subjectKey);
-      const filePath = `jammu-university/bulk/${subjectSlug}/${subjectSlug}-${ghUser}.json`;
+    for (const [, groupDocs] of groups.entries()) {
+      const first = groupDocs[0];
+      const degreeSlug = (first.degree || "btech").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const branchSlug = first.branch.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const cleanSubject = first.subject.replace(/^Sem\s+\d+\s*/i, "").trim();
+      const subjectSlug = sanitizeSlug(cleanSubject);
+      const folderSlug = `sem-${first.semester}-${subjectSlug}`;
+      const filePath = `jammu-university/${degreeSlug}/${branchSlug}/sem-${first.semester}/${folderSlug}/${folderSlug}.json`;
       filePaths.push(filePath);
-      const jsonContent = buildJson(subjectDocs);
-      const base64Content = Buffer.from(jsonContent, "utf-8").toString("base64");
 
+      // Build new entries for this group
+      const today = new Date().toISOString().split("T")[0];
+      const newEntries: Record<string, unknown>[] = groupDocs.map(d => ({
+        title: d.title.trim(),
+        url: d.url.trim(),
+        type: d.type,
+        contributor: d.contributor.trim() || undefined,
+        uploadedAt: today,
+      }));
+
+      // Merge with existing content (if file already exists in main)
+      const { json: mergedJson, sha: existingSha } = await mergeWithExisting(filePath, newEntries, headers);
+      const base64Content = Buffer.from(mergedJson, "utf-8").toString("base64");
+
+      const frBody: Record<string, unknown> = { message: `Add ${first.subject} (${groupDocs.length} docs) for ${first.branch} S${first.semester}`, content: base64Content, branch: branchName };
+      if (existingSha) frBody.sha = existingSha;
       const fr = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`, {
         method: "PUT", headers,
-        body: JSON.stringify({ message: `Add ${subjectKey} (${subjectDocs.length} docs) by ${bulkContributor || "anonymous"}`, content: base64Content, branch: branchName }),
+        body: JSON.stringify(frBody),
       });
       if (!fr.ok) {
         await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs/heads/${branchName}`, { method: "DELETE", headers }).catch(() => {});
@@ -274,13 +321,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const uniqueLocations = new Set(docs.map(d => `${d.branch} S${d.semester}`));
     const prR = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls`, {
       method: "POST", headers,
       body: JSON.stringify({
-        title: `Add ${docs.length} documents (bulk) by ${bulkContributor || "anonymous"}`,
+        title: `Add ${docs.length} documents (bulk)`,
         head: branchName, base: "main",
-        body: [`## Bulk Document Upload`, ``, `**Contributor:** ${bulkContributor || "anonymous"}`,
+        body: [`## Multiple Documents Upload`, ``, `**Contributor:** ${bulkContributor || "anonymous"}`,
           `**Total documents:** ${docs.length}`, `**Files created:** ${filePaths.length}`,
+          `**Locations:** ${[...uniqueLocations].join(", ")}`,
           ``, `**Files:**`, ...filePaths.map(p => `- \`${p}\``),
           ``, `---`, `_Created via [JU Learning](${siteUrl}/contribute)_`].join("\n"),
       }),

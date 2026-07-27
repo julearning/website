@@ -2,14 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 
-export type SortOption = "relevance" | "newest" | "oldest" | "name" | "size";
+export type SortOption = "relevance" | "newest" | "oldest" | "name";
 
 const SORT_LABELS: Record<SortOption, string> = {
   relevance: "Relevance",
   newest: "Newest",
   oldest: "Oldest",
   name: "Name A–Z",
-  size: "File Size",
 };
 
 interface Props {
@@ -31,7 +30,7 @@ export function SortDropdown({ value, onChange }: Props) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const options: SortOption[] = ["relevance", "newest", "oldest", "name", "size"];
+  const options: SortOption[] = ["relevance", "newest", "oldest", "name"];
 
   return (
     <div ref={ref} className="relative">

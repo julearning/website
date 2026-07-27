@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { SearchResult } from "@/lib/search";
-import { formatFileSize, getThumbnailUrl, TYPE_LABELS } from "@/lib/types";
+import { getThumbnailUrl, TYPE_LABELS } from "@/lib/types";
 import { reportBrokenLink } from "@/lib/report";
 
 export function ResultCard({ result }: { result: SearchResult }) {
@@ -78,11 +78,8 @@ export function ResultCard({ result }: { result: SearchResult }) {
             </p>
           )}
 
-          {/* File size + download */}
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground/50 transition-colors duration-300 group-hover:text-white/50">
-              {formatFileSize(doc.fileSize)}
-            </span>
+          {/* Download */}
+          <div className="mt-3">
             <span className="text-xs font-semibold text-foreground/60 transition-colors duration-300 group-hover:text-white/80">
               Download
             </span>

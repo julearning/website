@@ -30,6 +30,8 @@ interface SearchHeroProps {
   searchOnMount?: boolean;
   /** Pre-select a source filter, e.g. from URL query param */
   defaultSource?: string;
+  /** Hide the type filter dropdown — used on dedicated type pages */
+  hideTypeFilter?: boolean;
 }
 
 /** Source display order: "jammu-university" always first, rest alphabetically */
@@ -117,6 +119,7 @@ export function SearchHero({
   subtitle: propSubtitle,
   defaultType,    searchOnMount,
   defaultSource,
+  hideTypeFilter,
 }: SearchHeroProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -536,7 +539,7 @@ export function SearchHero({
           {/* Filters — above the cascade */}
           <div className="flex flex-wrap items-center justify-end gap-1 pt-4">
             <SortDropdown value={sort} onChange={handleSortChange} />
-            <TypeFilter activeType={activeType} onChange={handleTypeChange} />
+            {!hideTypeFilter && <TypeFilter activeType={activeType} onChange={handleTypeChange} />}
             {availableSources.length > 1 && (
               <SourceDropdown
                 availableSources={availableSources}

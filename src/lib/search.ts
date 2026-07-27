@@ -130,9 +130,7 @@ function sortDocumentsBy(docs: Document[], sort: FilterState["sort"]): Document[
     case "name":
       sorted.sort((a, b) => a.title.localeCompare(b.title));
       break;
-    case "size":
-      sorted.sort((a, b) => b.fileSize - a.fileSize);
-      break;
+
     default:
       break;
   }

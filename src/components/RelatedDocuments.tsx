@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Document as JLDoc } from "@/lib/types";
-import { formatFileSize, getThumbnailUrl, TYPE_LABELS } from "@/lib/types";
+import { getThumbnailUrl, TYPE_LABELS } from "@/lib/types";
 
 function RelatedCard({ doc }: { doc: JLDoc }) {
   const [imgFailed, setImgFailed] = useState(false);
@@ -54,8 +54,6 @@ function RelatedCard({ doc }: { doc: JLDoc }) {
         </h4>
         <p className="mt-2 text-xs text-muted-foreground/70 transition-colors duration-300 group-hover:text-white/70">
           {doc.branch} S{doc.semester}
-          <span className="mx-1.5 text-muted-foreground/30 transition-colors duration-300 group-hover:text-white/30">·</span>
-          {formatFileSize(doc.fileSize)}
         </p>
 
         {/* Contributor */}

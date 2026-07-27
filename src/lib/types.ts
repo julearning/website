@@ -4,7 +4,8 @@ export interface Document {
   url: string;
   thumbnailUrl: string;
   fileType: "pdf" | "docx";
-  fileSize: number;
+  /** @deprecated fileSize is no longer displayed in the UI */
+  fileSize?: number;
   /** Folder-derived hierarchy — only for jammu-university documents */
   branch: Branch | null;
   semester: number | null;
@@ -46,7 +47,6 @@ export type RawDocument = {
   url: string;
   type?: DocType;
   tags?: string[];
-  fileSize?: number;
   description?: string;
   fileType?: string;
   uploadedAt?: string;
@@ -61,14 +61,9 @@ export type FilterState = {
   subject: string | null;
   types: DocType[];
   sources: string[];
-  sort: "relevance" | "newest" | "oldest" | "name" | "size";
+  sort: "relevance" | "newest" | "oldest" | "name";
 };
 
-export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 export function getFileIdFromUrl(url: string): string | null {
   // Match /file/d/..., /document/d/..., /spreadsheets/d/..., /presentation/d/...

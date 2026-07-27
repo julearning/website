@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import { documents } from "@/data/documents";
 import type { Document } from "@/lib/types";
 import { getThumbnailUrl } from "@/lib/types";
@@ -166,6 +167,20 @@ export default function Home() {
                   <CategoryCard key={doc.id} doc={doc} />
                 ))}
               </div>
+              {/* View More link — navigates to dedicated type page */}
+              <Link
+                href={cat.type === "pyq" ? "/pyq" : cat.type === "handwritten" ? "/handwritten" : "/digital-notes"}
+                className="group mt-5 block w-full bg-surface transition-all duration-300 hover:bg-brand overflow-hidden"
+              >
+                <div className="flex min-h-[80px] w-full items-center justify-between bg-surface px-8 transition-colors duration-300 group-hover:bg-brand">
+                  <span className="text-lg font-bold text-foreground transition-colors duration-300 group-hover:text-white">
+                    View More {cat.title}
+                  </span>
+                  <svg className="h-5 w-5 text-foreground transition-all duration-300 group-hover:text-white group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </div>
+              </Link>
             </section>
           ) : null
         )}

@@ -46,8 +46,8 @@ function getBranches() { return [...new Set(juDocs.map(d => d.branch).filter(Boo
 function getSemesters(branch: string) {
   return [...new Set(juDocs.filter(d => d.branch === branch).map(d => d.semester))].filter((s): s is number => s != null).sort((a, b) => a - b);
 }
-function getSubjects(branch: string, semester: number) {
-  return [...new Set(juDocs.filter(d => d.branch === branch && d.semester === semester).map(d => d.subject).filter(Boolean))].sort();
+function getSubjects(branch: string, semester: number): string[] {
+  return [...new Set(juDocs.filter(d => d.branch === branch && d.semester === semester).map(d => d.subject).filter((s): s is string => s !== null))].sort();
 }
 
 /* ------------------------------------------------------------------ */
@@ -131,7 +131,7 @@ function sanitizeSlug(text: string): string {
 
 const MEDIA_EXTS = new Set(["png","jpg","jpeg","gif","webp","svg","ico","mp4","mov","avi","mkv","webm"]);
 
-interface BulkRow { id: number; title: string; url: string; detectedType: string; subject: string; }
+interface BulkRow { id: number; title: string; url: string; detectedType: string; subject: string; branch: string; semester: string; }
 
 let rowCounter = 0;
 
@@ -168,6 +168,9 @@ export default function ContributePage() {
   const [bulkUser, setBulkUser] = useState(""); const [rawText, setRawText] = useState("");
   const [rows, setRows] = useState<BulkRow[]>([]); const [submitting, setSubmitting] = useState(false);
   const [bulkPrUrl, setBulkPrUrl] = useState(""); const [bulkError, setBulkError] = useState("");
+  const [bulkConfirmed, setBulkConfirmed] = useState(false);
+  const [bulkGhStatus, setBulkGhStatus] = useState<"idle"|"checking"|"valid"|"invalid">("idle");
+  const [bulkGhMsg, setBulkGhMsg] = useState("");
 
   /* ---------- Shared submission state ---------- */
   const [status, setStatus] = useState<"idle"|"loading"|"success"|"error">("idle");
@@ -181,7 +184,7 @@ export default function ContributePage() {
   }, [branch, customBranch, bmode]);
   const subjects = useMemo(() => {
     const ab = bmode === "custom" ? customBranch : branch;
-    const as = semode === "custom" ? Number(customSemester) : semester;
+    const as = semode === "custom" ? Number(customSemester) : Number(semester);
     if (!ab || !as) return []; return getSubjects(ab, as);
   }, [branch, customBranch, bmode, semester, customSemester, semode]);
   const resolvedBranch = bmode === "custom" ? customBranch.trim() : branch;
@@ -197,7 +200,7 @@ export default function ContributePage() {
 
   const parsedRows = useMemo(() => parsedFiles.map(f => {
     const nameNoExt = f.fileName.replace(/\.[^/.]+$/, "").trim();
-    return { id: ++rowCounter, title: nameNoExt, url: f.url, detectedType: detectTypeFromName(f.fileName), subject: "" };
+    return { id: ++rowCounter, title: nameNoExt, url: f.url, detectedType: detectTypeFromName(f.fileName), subject: "", branch: "", semester: "" };
   }), [parsedFiles]);
 
   /* ---------- Single: URL change ---------- */
@@ -232,7 +235,7 @@ export default function ContributePage() {
   /* ---------- Single: submit ---------- */
   const newSourceValid = isNewSource ? (newSourceName.trim() && newSourceUrl.trim()) : true;
   const juValid = !isNewSource && source === "jammu-university" ? (resolvedBranch && resolvedSemester && resolvedSubject) : true;
-  const singleValid = title.trim() && url.trim() && urlStatus !== "invalid" && juValid && newSourceValid && ghStatus !== "invalid";
+  const singleValid = title.trim() && url.trim() && urlStatus !== "invalid" && contributor.trim() && ghStatus !== "invalid" && juValid && newSourceValid;
 
   async function handleSingleSubmit(e: React.FormEvent) {
     e.preventDefault(); if (!singleValid) return;
@@ -269,23 +272,42 @@ export default function ContributePage() {
     setRows(parsedRows); setBulkStep("table");
   }
 
-  function updateRow(id: number, field: "subject" | "type", value: string) {
-    const prop = field === "type" ? "detectedType" : "subject";
+  function updateRow(id: number, field: "subject" | "type" | "branch" | "semester", value: string) {
+    const propMap: Record<string, string> = { type: "detectedType", subject: "subject", branch: "branch", semester: "semester" };
+    const prop = propMap[field] || field;
     setRows(prev => prev.map(r => r.id === id ? { ...r, [prop]: value } : r));
+  }
+
+  function copyFromAbove(id: number) {
+    setRows(prev => {
+      const idx = prev.findIndex(r => r.id === id);
+      if (idx <= 0) return prev;
+      const above = prev[idx - 1];
+      return prev.map((r, i) => i === idx ? { ...r, branch: above.branch, semester: above.semester, subject: above.subject, detectedType: above.detectedType } : r);
+    });
   }
 
   function deleteRow(id: number) {
     setRows(prev => prev.filter(r => r.id !== id));
   }
 
-  const bulkValid = rows.length > 0 && rows.every(r => r.subject.trim() && r.detectedType);
+  const bulkValid = rows.length > 0 && rows.every(r => r.subject.trim() && r.detectedType && r.branch && r.semester) && bulkConfirmed;
 
   /* ---------- Bulk: submit to API ---------- */
   async function handleBulkSubmit() {
     if (!bulkValid || submitting) return;
     setSubmitting(true); setBulkError("");
     try {
-      const docs = rows.map(r => ({ title: r.title, url: r.url, type: r.detectedType || "mixed", subject: r.subject.trim(), contributor: bulkUser }));
+      const docs = rows.map(r => ({
+        title: r.title,
+        url: r.url,
+        type: r.detectedType || "mixed",
+        subject: r.subject.trim(),
+        contributor: bulkUser,
+        branch: r.branch,
+        semester: Number(r.semester),
+        degree: "btech",
+      }));
       const res = await fetch("/api/contribute", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode:"bulk", contributor: bulkUser, docs }),
@@ -310,20 +332,30 @@ export default function ContributePage() {
     setTouched({});
   }
 
-  function resetBulk() { setBulkStep("username"); setBulkUser(""); setRawText(""); setRows([]); setBulkPrUrl(""); setBulkError(""); }
+  function handleBulkGhChange(val: string) {
+    setBulkUser(val); setBulkGhStatus("idle"); setBulkGhMsg("");
+    if (ghTimer.current) clearTimeout(ghTimer.current);
+    if (!val.trim()) return;
+    ghTimer.current = setTimeout(async () => {
+      setBulkGhStatus("checking"); const r = await validateGithub(val);
+      setBulkGhStatus(r.valid ? "valid" : "invalid"); setBulkGhMsg(r.message);
+    }, 600);
+  }
+
+  function resetBulk() { setBulkStep("username"); setBulkUser(""); setRawText(""); setRows([]); setBulkPrUrl(""); setBulkError(""); setBulkConfirmed(false); setBulkGhStatus("idle"); setBulkGhMsg(""); }
 
   function markTouched(f: string) { setTouched(t => ({ ...t, [f]: true })); }
 
   /* ---------- Single preview ---------- */
   const previewJson = useMemo(() => {
-    if (!title.trim() || !url.trim()) return null;
+    if (!title.trim() || !url.trim() || !contributor.trim()) return null;
     if (source === "jammu-university" && (!resolvedBranch || !resolvedSemester || !resolvedSubject)) return null;
-    const entry: Record<string, unknown> = { title: title.trim(), url: url.trim(), type: docType };
+    const entry: Record<string, unknown> = { title: title.trim(), url: url.trim(), type: docType, contributor: contributor.trim() };
     if (thumbnailUrl.trim()) entry.thumbnailUrl = thumbnailUrl.trim();
     if (source !== "jammu-university") entry.description = docType;
     entry.uploadedAt = new Date().toISOString().split("T")[0];
     return JSON.stringify([entry], null, 2);
-  }, [title, url, thumbnailUrl, docType, source, resolvedBranch, resolvedSemester, resolvedSubject]);
+  }, [title, url, contributor, thumbnailUrl, docType, source, resolvedBranch, resolvedSemester, resolvedSubject]);
 
   /* ---------- Render ---------- */
   return (
@@ -377,6 +409,13 @@ export default function ContributePage() {
                 + New Source
               </button>
             </div>
+            <p className="mt-3 text-xs text-muted-foreground/60">
+              Need to contribute to a different platform?{" "}
+              <button type="button" onClick={() => { setMode("single"); setIsNewSource(true); setSource("__new__"); }}
+                className="font-semibold text-brand underline transition-colors hover:text-brand/80">
+                Create a new source
+              </button>
+            </p>
           </div>
 
           {/* New source fields */}
@@ -542,9 +581,9 @@ export default function ContributePage() {
           <div className="bg-surface px-6 py-5 mb-8">
             <h2 className="text-lg font-bold text-foreground">How to contribute multiple documents</h2>
             <ol className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground list-decimal list-inside">
-              <li>Create a folder in Google Drive, right-click → <strong>Share</strong> → <strong>Anyone with the link</strong> → <strong>Viewer</strong>. Drop your files in.</li>
-              <li>Open the folder in <strong>List view</strong>. Install and click the <a href="https://chromewebstore.google.com/detail/Google%20Drive%20Link%20Getter/pcepfnopeaalfdibnbflpphaapbfoicl" target="_blank" rel="noopener noreferrer" className="text-brand underline">Drive Link Getter</a> extension to copy all links.</li>
-              <li>Enter your GitHub username, paste the links below, set the type and subject for each file, then click submit.</li>
+              <li><strong>Make your files publicly accessible</strong>. Create a folder in Google Drive, right-click → <strong>Share</strong> → <strong>Anyone with the link</strong> → <strong>Viewer</strong>. Drop your files in. <span className="text-amber-600/70">Important: just having a link is not enough — you must explicitly set the sharing to &quot;Anyone with the link&quot;.</span></li>
+              <li><strong>Copy all links at once.</strong> Open the folder in <strong>List view</strong>. Install and click the <a href="https://chromewebstore.google.com/detail/Google%20Drive%20Link%20Getter/pcepfnopeaalfdibnbflpphaapbfoicl" target="_blank" rel="noopener noreferrer" className="text-brand underline">Drive Link Getter</a> extension to copy all file names and links as a list.</li>
+              <li><strong>Configure and submit.</strong> Paste the links below, set the branch, semester, type and subject for each file, confirm the checkbox, and click submit. A pull request will be raised automatically — you can view it, track it, and see exactly how everything works.</li>
             </ol>
           </div>
 
@@ -552,9 +591,17 @@ export default function ContributePage() {
             <div>
               <label className="block text-sm font-semibold text-foreground">Your GitHub Username</label>
               <p className="mt-1 text-sm text-muted-foreground">This will be used as the contributor for every document.</p>
-              <input type="text" value={bulkUser} onChange={e => setBulkUser(e.target.value)} placeholder="e.g., aryanbatras" autoFocus
-                className="mt-3 w-full max-w-md border-0 bg-surface px-5 py-4 text-base text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20" />
-              <button onClick={() => bulkUser.trim() && setBulkStep("paste")} disabled={!bulkUser.trim()}
+              <div className="relative max-w-md">
+                <input type="text" value={bulkUser} onChange={e => handleBulkGhChange(e.target.value)} placeholder="e.g., aryanbatras" autoFocus
+                  className={`mt-3 w-full border-0 bg-surface px-5 py-4 pr-10 text-base text-foreground outline-none ring-1 transition-all focus:ring-2 ${bulkGhStatus === "invalid" ? "ring-red-300 focus:ring-red-400" : "ring-border/30 focus:ring-brand/20"}`} />
+                {bulkGhStatus === "checking" && <span className="absolute right-4 top-1/2 -translate-y-1/2"><svg className="h-4 w-4 animate-spin text-muted-foreground/50" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" /><path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" className="opacity-75" /></svg></span>}
+                {bulkGhStatus === "valid" && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-brand">✓</span>}
+                {bulkGhStatus === "invalid" && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-red-500">✗</span>}
+              </div>
+              {bulkUser.trim() && bulkGhStatus === "invalid" && <p className="mt-2 text-xs text-red-500">{bulkGhMsg}</p>}
+              {bulkUser.trim() && bulkGhStatus === "valid" && <p className="mt-2 text-xs text-brand/80">{bulkGhMsg}</p>}
+              {bulkGhStatus === "checking" && <p className="mt-2 text-xs text-muted-foreground/60">Verifying...</p>}
+              <button onClick={() => bulkGhStatus !== "invalid" && bulkUser.trim() && setBulkStep("paste")} disabled={!bulkUser.trim() || bulkGhStatus === "invalid"}
                 className="mt-6 bg-brand px-8 py-4 text-base font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed">Continue</button>
             </div>
           )}
@@ -577,17 +624,23 @@ export default function ContributePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border/20 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                      <th className="px-3 py-3 font-normal w-8"></th>
-                      <th className="px-3 py-3 font-normal">#</th>
-                      <th className="px-3 py-3 font-normal">File</th>
-                      <th className="px-3 py-3 font-normal min-w-[140px]">Type</th>
-                      <th className="px-3 py-3 font-normal min-w-[180px]">Subject</th>
+                      <th className="px-2 py-3 font-normal w-8"></th>
+                      <th className="px-2 py-3 font-normal">#</th>
+                      <th className="px-2 py-3 font-normal">File</th>
+                      <th className="px-2 py-3 font-normal min-w-[100px]">Branch</th>
+                      <th className="px-2 py-3 font-normal min-w-[100px]">Sem</th>
+                      <th className="px-2 py-3 font-normal min-w-[150px]">Subject</th>
+                      <th className="px-2 py-3 font-normal min-w-[120px]">Type</th>
+                      <th className="px-2 py-3 font-normal w-8"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row, i) => (
+                    {rows.map((row, i) => {
+                      const semesters = row.branch ? getSemesters(row.branch) : [];
+                      const subjects = row.branch && row.semester ? getSubjects(row.branch, Number(row.semester)) : [];
+                      return (
                       <tr key={row.id} className="border-b border-border/10 transition-colors hover:bg-accent/30">
-                        <td className="px-3 py-3">
+                        <td className="px-2 py-2">
                           <div className="flex items-center gap-1">
                             <a href={row.url} target="_blank" rel="noopener noreferrer"
                               className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
@@ -610,32 +663,88 @@ export default function ContributePage() {
                             </button>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-xs text-muted-foreground/50">{i + 1}</td>
-                        <td className="px-3 py-3 max-w-[280px]"><p className="truncate font-medium text-foreground">{row.title}</p></td>
-                        <td className="px-3 py-3">
+                        <td className="px-2 py-2 text-xs text-muted-foreground/50">{i + 1}</td>
+                        <td className="px-2 py-2 max-w-[160px]"><p className="truncate font-medium text-foreground text-[11px]">{row.title}</p></td>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1">
+                            <input type="text" value={row.branch} onChange={e => updateRow(row.id, "branch", e.target.value)}
+                              placeholder="Br." list={`branches-${row.id}`}
+                              className="w-full border-0 bg-surface px-2 py-2 text-[11px] text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20 placeholder:text-muted-foreground/40" />
+                            <datalist id={`branches-${row.id}`}>
+                              {branches.map(b => <option key={b} value={b} />)}
+                            </datalist>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2">
+                          <input type="text" value={row.semester} onChange={e => updateRow(row.id, "semester", e.target.value)}
+                            placeholder="Sem" list={`semesters-${row.id}`}
+                            className="w-full border-0 bg-surface px-2 py-2 text-[11px] text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20 placeholder:text-muted-foreground/40" />
+                          <datalist id={`semesters-${row.id}`}>
+                            {semesters.map(s => <option key={s} value={String(s)} />)}
+                          </datalist>
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1">
+                            <input type="text" value={row.subject} onChange={e => updateRow(row.id, "subject", e.target.value)}
+                              placeholder="Subject" list={`subjects-${row.id}`}
+                              className="w-full border-0 bg-surface px-2 py-2 text-[11px] text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20 placeholder:text-muted-foreground/30" />
+                            <datalist id={`subjects-${row.id}`}>
+                              {subjects.map(s => <option key={s} value={s} />)}
+                            </datalist>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2">
                           <select value={row.detectedType} onChange={e => updateRow(row.id, "type", e.target.value)}
-                            className={`w-full border-0 bg-surface px-3 py-2.5 text-sm outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20 ${row.detectedType ? "text-foreground" : "text-muted-foreground/50"}`}>
-                            <option value="" disabled>Select type...</option>
+                            className={`w-full border-0 bg-surface px-2 py-2 text-[11px] outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20 ${row.detectedType ? "text-foreground" : "text-muted-foreground/50"}`}>
+                            <option value="" disabled>Type</option>
                             {TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                           </select>
                         </td>
-                        <td className="px-3 py-3">
-                          <input type="text" value={row.subject} onChange={e => updateRow(row.id, "subject", e.target.value)}
-                            placeholder="e.g., Database Management Systems"
-                            className="w-full border-0 bg-surface px-3 py-2.5 text-sm text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20 placeholder:text-muted-foreground/30" />
+                        <td className="px-2 py-2">
+                          {i > 0 && (
+                            <button onClick={() => copyFromAbove(row.id)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-accent hover:text-brand"
+                              title="Copy values from above row">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="16 3 21 3 21 8"/>
+                                <line x1="4" y1="20" x2="21" y2="3"/>
+                                <polyline points="21 16 21 21 16 21"/>
+                                <line x1="15" y1="15" x2="21" y2="21"/>
+                                <line x1="4" y1="4" x2="9" y2="9"/>
+                              </svg>
+                            </button>
+                          )}
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
-              <p className="mt-4 text-sm text-muted-foreground">{rows.length} file{rows.length !== 1 ? "s" : ""}{rows.filter(r => !r.subject.trim()).length > 0 && <span className="ml-2 text-muted-foreground/50">· {rows.filter(r => !r.subject.trim()).length} missing subject</span>}</p>
+              <p className="mt-4 text-sm text-muted-foreground">
+                {rows.length} file{rows.length !== 1 ? "s" : ""}
+                {rows.filter(r => !r.branch).length > 0 && <span className="ml-2 text-muted-foreground/50">· {rows.filter(r => !r.branch).length} missing branch</span>}
+                {rows.filter(r => !r.semester).length > 0 && <span className="ml-2 text-muted-foreground/50">· {rows.filter(r => !r.semester).length} missing semester</span>}
+                {rows.filter(r => !r.subject.trim()).length > 0 && <span className="ml-2 text-muted-foreground/50">· {rows.filter(r => !r.subject.trim()).length} missing subject</span>}
+              </p>
               {bulkError && <div className="mt-4 bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">{bulkError}</div>}
+
+              {/* Confirmation checkbox */}
+              <label className="mt-6 flex items-start gap-3 cursor-pointer group">
+                <input type="checkbox" checked={bulkConfirmed} onChange={e => setBulkConfirmed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-brand" />
+                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                  I confirm that <strong>all my documents are publicly accessible</strong> and anyone with the link can view them. I have clicked the <strong>Share</strong> button and set the link sharing to <strong>&quot;Anyone with the link&quot;</strong> → <strong>Viewer</strong> for every file.
+                </span>
+              </label>
+
               <button onClick={handleBulkSubmit} disabled={!bulkValid || submitting}
                 className={`mt-6 bg-brand px-8 py-4 text-base font-bold text-white transition-opacity ${(!bulkValid || submitting) ? "opacity-30 cursor-not-allowed" : "hover:opacity-90 cursor-pointer"}`}>
                 {submitting ? "Creating pull request..." : `Submit ${rows.length} file${rows.length !== 1 ? "s" : ""}`}
               </button>
-              {!bulkValid && <p className="mt-3 text-xs text-muted-foreground/50">Fill in type and subject for every file to continue.</p>}
+              {!bulkValid && <p className="mt-3 text-xs text-muted-foreground/50">Fill in branch, semester, type & subject for every file, and confirm the checkbox to continue.</p>}
+              <p className="mt-4 text-xs text-muted-foreground/50 leading-relaxed">
+                Once you click submit, a pull request will be created on GitHub. You can <strong>View PR on GitHub</strong> to see exactly what files were created, track the review process, and understand how everything works behind the scenes. A maintainer will review and merge it.
+              </p>
             </div>
           )}
         </div>
@@ -643,10 +752,19 @@ export default function ContributePage() {
 
       {mode === "bulk" && bulkStep === "done" && (
         <div className="mt-12 bg-surface p-10 text-center">
-          <p className="text-2xl font-bold text-foreground">Pull Request Created!</p>
-          <p className="mt-3 text-sm text-muted-foreground">{rows.length} documents submitted in a single PR.</p>
+          <p className="text-3xl font-bold text-foreground">🎉 Congratulations!</p>
+          <p className="mt-2 text-lg text-foreground">You&apos;ve made your first open source contribution!</p>
+          <p className="mt-3 text-sm text-muted-foreground">{rows.length} document{rows.length !== 1 ? "s" : ""} submitted in a single PR.</p>
           <a href={bulkPrUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block bg-brand px-8 py-4 text-lg font-bold text-white transition-opacity hover:opacity-90">View PR on GitHub ↗</a>
-          <button onClick={resetBulk} className="mt-4 block w-full text-center text-sm text-muted-foreground transition-colors hover:text-foreground">Submit more documents</button>
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(bulkPrUrl)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-[#0A66C2] px-6 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+              Share on LinkedIn
+            </a>
+          </div>
+          <button onClick={resetBulk} className="mt-6 block w-full text-center text-sm text-muted-foreground transition-colors hover:text-foreground">Submit more documents</button>
         </div>
       )}
 

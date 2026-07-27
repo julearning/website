@@ -10,7 +10,6 @@ import {
   getDocumentCount,
 } from "@/data/documents";
 import { slugify, deslugifyDegree, semesterSlug, parseSemesterSlug, deslugify } from "@/lib/slugs";
-import { formatFileSize } from "@/lib/types";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export function generateStaticParams() {
@@ -96,7 +95,6 @@ export default async function SemesterPage({
       <div className="mt-12 grid grid-cols-2 gap-6 lg:grid-cols-3">
         {subjects.map((subject) => {
           const subjectDocs = branchDocs.filter((d) => d.subject === subject);
-          const totalSize = subjectDocs.reduce((sum, d) => sum + d.fileSize, 0);
 
           return (
             <Link
@@ -109,7 +107,6 @@ export default async function SemesterPage({
               </h2>
               <p className="mt-3 text-base text-muted-foreground transition-colors duration-300 group-hover:text-white/80">
                 {subjectDocs.length} documents
-                {totalSize > 0 && ` · ${formatFileSize(totalSize)}`}
               </p>
             </Link>
           );
