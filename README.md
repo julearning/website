@@ -1,6 +1,6 @@
 # JU Learning — Website
 
-Frontend for JU Learning — a study material directory for engineering students. Discover notes, PYQs, textbooks, and reference materials across 5 sources.
+Frontend for JU Learning — a study material directory for engineering students. Discover notes, PYQs, textbooks, and reference materials across multiple sources.
 
 **Live site:** [julearning.vercel.app](https://julearning.vercel.app)
 
@@ -33,10 +33,10 @@ The predev script clones the metadata repo and generates the document data. Requ
 | Source | Description |
 |--------|-------------|
 | **Jammu University** | Notes, PYQs, assignments from JU students (curriculum-aligned) |
-| **Open Textbook Library** | 631 openly licensed textbooks |
-| **OpenStax** | 56 free peer-reviewed textbooks from Rice University |
-| **Project Gutenberg** | 524 out-of-copyright math and CS books |
-| **Wikibooks** | 401 freely available textbooks from Wikimedia |
+| **Open Textbook Library** | Openly licensed textbooks |
+| **Wikibooks** | Freely available textbooks from Wikimedia |
+| **OpenStax** | Free peer-reviewed textbooks from Rice University |
+| **Project Gutenberg** | Out-of-copyright math and CS books |
 
 Search results are grouped by source — JU content appears first, then other sources alphabetically.
 
@@ -44,26 +44,34 @@ Search results are grouped by source — JU content appears first, then other so
 
 | Path | Page |
 |------|------|
-| `/` | Home page |
+| `/` | Home — search, PYQ/handwritten/digital categories, browse sections |
+| `/contribute` | Single and multiple document submission (creates a PR) |
+| `/pyq` | Previous year questions (pre-filtered) |
+| `/handwritten` | Handwritten notes (pre-filtered) |
+| `/digital-notes` | Digital notes (pre-filtered) |
 | `/branches` | All branches |
 | `/branches/[branch]` | Semesters for a branch |
 | `/semesters/[branch]/[semester]` | Subjects for a semester |
 | `/subjects/[branch]/[semester]/[subject]` | Documents for a subject |
 | `/degree` | B.Tech overview |
-| `/handwritten` | Handwritten notes |
-| `/digital-notes` | Digital notes |
-| `/pyq` | Previous year questions |
-| `/automation/drive` | Drive link → JSON converter for contributors |
 | `/terms` | Terms |
 | `/privacy` | Privacy |
 
 ## Architecture
 
-1. **Build time**: `scripts/generate-data.mjs` clones the metadata repo, reads all JSON files (1,600+ across 5 sources), and generates a single documents array
+1. **Build time**: `scripts/generate-data.mjs` clones the metadata repo, reads all JSON files, and generates a single documents array
 2. **Static generation**: Next.js prerenders all pages from this data
 3. **Runtime**: Search and filtering are entirely client-side. No API calls, no server logic.
 
-The website is the frontend for a **link directory** — no files are hosted. Every document link points to Google Drive, Open Textbook Library, OpenStax, or another public source.
+The website is the frontend for a **link directory** — no files are hosted. Every document link points to Google Drive or another public source.
+
+## Contributing documents
+
+Anyone can contribute study materials via the `/contribute` page:
+- **Single document**: Fill in title, URL, type, and metadata — a PR is created automatically
+- **Multiple documents**: Paste a list of Drive links, configure each one, and submit as a single PR
+
+The API route handles all GitHub interactions: branch creation, file creation/update, and PR creation. Contributor information is read from the submitted JSON, not from filenames.
 
 ## Design
 

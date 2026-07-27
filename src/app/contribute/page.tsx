@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import Link from "next/link";
 import { documents } from "@/data/documents";
 import type { DocType } from "@/lib/types";
 import { TYPE_LABELS } from "@/lib/types";
@@ -772,6 +773,22 @@ export default function ContributePage() {
         By submitting, you agree that your document links will be publicly listed on JU Learning.
         Your files stay on your Drive — we only index the links.
       </p>
+
+      {/* Leaderboard link */}
+      <div className="mt-10 text-center">
+        <Link
+          href="/contributors"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground/60 transition-colors hover:text-foreground"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          View all contributions
+        </Link>
+      </div>
     </main>
   );
 }

@@ -22,46 +22,82 @@ src/
 ├── app/
 │   ├── page.tsx                   # Home page (search + browse sections)
 │   ├── layout.tsx                 # Root layout with Navbar + Footer
-│   ├── branches/
-│   ├── semesters/
-│   ├── subjects/
-│   ├── degree/
-│   ├── handwritten/
-│   ├── digital-notes/
-│   ├── pyq/
-│   ├── contribute/               # Single + bulk document submission
-│   ├── sources/                   # Dynamic sources page (reads from metadata)
-│   ├── contributors/
+│   ├── contribute/               # Single + multiple document submission via PR
+│   ├── pyq/                      # Dedicated PYQ page (pre-filtered)
+│   ├── handwritten/              # Dedicated handwritten notes page
+│   ├── digital-notes/            # Dedicated digital notes page
+│   ├── branches/                 # Browse by branch
+│   ├── semesters/                # Browse by semester
+│   ├── subjects/                 # Browse by subject
+│   ├── degree/                   # Degree overview
+│   ├── sources/                  # Dynamic sources page
+│   ├── contributors/             # Contributor leaderboard
 │   ├── terms/
 │   └── privacy/
 ├── components/
 │   ├── Navbar.tsx
 │   ├── Footer.tsx
-│   ├── SearchHero.tsx             # Search bar + results grid + filters
-│   ├── ResultCard.tsx             # Document card in search results
-│   ├── PaginatedGrid.tsx          # Grid with infinite scroll
+│   ├── SearchHero.tsx            # Search bar + progressive cascade + results
+│   ├── ResultCard.tsx            # Document card
+│   ├── PaginatedGrid.tsx         # Grid with pagination
 │   ├── SortDropdown.tsx
 │   ├── TypeFilter.tsx
 │   ├── SourceDropdown.tsx
 │   ├── Breadcrumbs.tsx
 │   └── ContributorCircle.tsx
 ├── lib/
-│   ├── search.ts                  # Custom search + sort (no external lib)
-│   ├── types.ts                   # Document, FilterState types
-│   └── report.ts                  # Broken link reporting (creates GitHub issue)
+│   ├── search.ts                 # Custom search + sort
+│   ├── types.ts                  # Document, FilterState, DocType
+│   ├── hierarchy.ts              # Degree/branch/semester/subject tree
+│   ├── slugs.ts                  # Slugify/deslugify utilities
+│   ├── preferences.ts            # User preferences (localStorage)
+│   ├── contributors.ts           # Contributor aggregation
+│   └── report.ts                 # Broken link reporting
 ├── scripts/
-│   └── generate-data.mjs          # Build-time data generator
+│   └── generate-data.mjs         # Build-time data generator
 └── data/
-    └── generated-documents.ts     # Auto-generated at build time
+    └── generated-documents.ts    # Auto-generated at build time
 ```
 
 ## Content sources
 
 Sources are defined by the metadata repository's folder structure:
-- `jammu-university/` — hierarchical (degree/branch/semester/subject)
-- `other-sources/{name}/` — flat (non-JU sources like wikibooks)
+- `jammu-university/` — hierarchical (degree/branch/semester/subject), PR-based contributions
+- `other-sources/{name}/` — flat (non-JU sources like wikibooks, openstax)
 
-Each source in `other-sources/` has a `{name}.json` metadata file (name, description, url) and a `{name}/` folder with individual document files. The website discovers all sources automatically — add a new folder to the metadata repo and it appears on the next build.
+Each source in `other-sources/` has a `{name}.json` metadata file and a `{name}/` folder with individual document files. The website discovers all sources automatically.
+
+## Metadata path convention
+
+Document JSON files follow this path convention:
+
+```
+jammu-university/btech/{branch}/sem-{N}/sem-{N}-{subject}/sem-{N}-{subject}.json
+```
+
+Example: `jammu-university/btech/cse/sem-4/sem-4-data-structures-and-algorithms/sem-4-data-structures-and-algorithms.json`
+
+Each file contains an array of document entries (multiple contributions per file):
+
+```json
+[
+  {
+    "title": "DBMS Unit 1 Notes",
+    "url": "https://drive.google.com/file/d/.../view",
+    "type": "digital",
+    "contributor": "github-username",
+    "uploadedAt": "2026-07-27"
+  }
+]
+```
+
+## Contributing documents
+
+The website has a built-in contribution flow at `/contribute`:
+1. **Single document** — Fill in title, URL, type, branch/semester/subject, and GitHub username
+2. **Multiple documents** — Paste a list of Google Drive links, configure each row with branch/semester/subject/type, confirm accessibility, and submit
+
+Both modes create a pull request on the metadata repo automatically. No manual JSON editing required.
 
 ## Coding conventions
 
@@ -77,9 +113,6 @@ Documents from different sources have different fields:
 - JU documents have `branch`, `semester`, `subject`
 - Non-JU documents have `branch: null`, `semester: null`, `subject: null`
 - Always use optional chaining and null-safe patterns when accessing document fields
-
-Bad: `d.branch === branch`  
-Good: `d.branch && d.branch === branch`
 
 When sorting or creating `Set`s from nullable fields, always filter out nulls first:
 ```ts
@@ -98,7 +131,7 @@ When sorting or creating `Set`s from nullable fields, always filter out nulls fi
 ## Build checks
 
 1. **Data generation**: Clones metadata repo, reads JSON, generates `src/data/generated-documents.ts`
-2. **Next.js build**: TypeScript check + static page generation (33+ routes)
+2. **Next.js build**: TypeScript check + static page generation
 
 Both must pass. Run locally before pushing.
 
