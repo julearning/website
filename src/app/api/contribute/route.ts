@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create PR
-      const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://julearning.vercel.app";
+      const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://julearning.com";
       const prBody = [`## Document`, ``, `**Title:** ${title}`, `**Type:** ${type}`, `**Contributor:** ${contributor || "anonymous"}`, `**Source:** ${sourceFolder}`];
       if (isNewSource) {
         prBody.push(`**New Source:** ${sourceName}`, `**Source URL:** ${sourceUrl || ""}`);
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
     if (groups.size === 0) return NextResponse.json({ error: "No valid docs after grouping." }, { status: 400 });
 
     const branchName = `contribute/bulk-${timestamp}`;
-    const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://julearning.vercel.app";
+    const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://julearning.com";
 
     const br = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs`, {
       method: "POST", headers,

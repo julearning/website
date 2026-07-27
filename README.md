@@ -2,7 +2,7 @@
 
 Frontend for JU Learning — a study material directory for engineering students. Discover notes, PYQs, textbooks, and reference materials across multiple sources.
 
-**Live site:** [julearning.vercel.app](https://julearning.vercel.app)
+**Live site:** [julearning.com](https://julearning.com)
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **Last updated:** July 27, 2026
 > **Organization:** [github.com/julearning](https://github.com/julearning)
-> **Live site:** [julearning.vercel.app](https://julearning.vercel.app)
+> **Live site:** [julearning.com](https://julearning.com)
 
 ---
 
