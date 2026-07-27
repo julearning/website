@@ -56,6 +56,15 @@ export default function SourcesPage() {
                       loading="lazy"
                     />
                   </div>
+                ) : source.id === "jammu-university" ? (
+                  <div className="shrink-0 w-16 h-16 overflow-hidden bg-accent">
+                    <img
+                      src="/images/logo.png"
+                      alt="Jammu University"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  </div>
                 ) : (
                   <div className="shrink-0 w-16 h-16 flex items-center justify-center bg-accent/50 text-xl font-bold text-muted-foreground/30 transition-colors duration-300 group-hover:text-white/30">
                     {source.name.charAt(0)}

@@ -355,7 +355,7 @@ function flattenDocuments(jsonFiles, cloneRoot) {
   }
 
   // Backfill thumbnails for non-JU documents: use the source's thumbnail
-  // (individual files never have their own thumbnail — source thumbnail is used instead)
+  // (individual files from other sources use the source logo as their thumbnail)
   // For Google Drive links, dynamic thumbnail via getThumbnailUrl() works for any source
   for (const doc of docs) {
     if (doc.source !== "jammu-university" && !doc.thumbnailUrl) {
@@ -363,7 +363,7 @@ function flattenDocuments(jsonFiles, cloneRoot) {
       if (isDriveUrl(doc.url)) {
         doc.thumbnailUrl = getThumbnailUrl(doc.url);
       } else {
-        // Use the source's own thumbnail image
+        // Use the source's own thumbnail image as the document thumbnail
         doc.thumbnailUrl = sourceThumbnailMap.get(doc.source) || "";
       }
     }

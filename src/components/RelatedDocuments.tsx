@@ -6,7 +6,7 @@ import { formatFileSize, getThumbnailUrl, TYPE_LABELS } from "@/lib/types";
 
 function RelatedCard({ doc }: { doc: JLDoc }) {
   const [imgFailed, setImgFailed] = useState(false);
-  const thumbUrl = getThumbnailUrl(doc.url);
+  const thumbUrl = doc.thumbnailUrl || getThumbnailUrl(doc.url);
   const showThumb = thumbUrl && !imgFailed;
   const docType = doc.type || (doc.tags && doc.tags[0]) || "";
 

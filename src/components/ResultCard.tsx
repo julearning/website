@@ -9,7 +9,7 @@ export function ResultCard({ result }: { result: SearchResult }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [reportMsg, setReportMsg] = useState("");
-  const thumbUrl = getThumbnailUrl(result.doc.url);
+  const thumbUrl = result.doc.thumbnailUrl || getThumbnailUrl(result.doc.url);
   const showThumb = thumbUrl && !imgFailed;
   const { doc } = result;
 

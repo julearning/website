@@ -80,7 +80,7 @@ export default function Home() {
 
   function CategoryCard({ doc }: { doc: Document }) {
     const [imgFailed, setImgFailed] = useState(false);
-    const thumb = getThumbnailUrl(doc.url);
+    const thumb = doc.thumbnailUrl || getThumbnailUrl(doc.url);
     const showThumb = thumb && !imgFailed;
 
     return (
