@@ -36,13 +36,8 @@ const OUTPUT_FILE = path.resolve(PROJECT_ROOT, "src/data/generated-documents.ts"
 const METADATA_REPO = "https://github.com/julearning/metadata.git";
 const CLONE_DIR = path.resolve(os.tmpdir(), "julearning-metadata-" + Date.now());
 
-const BRANCH_MAP = {
-  cse: "CSE",
-  ece: "ECE",
-  ee: "EE",
-  me: "ME",
-  ce: "CE",
-};
+// No hardcoded maps. Everything is derived from the folder structure.
+// Branch folder names (e.g., "cse", "ece") are used as-is (uppercased).
 
 function cloneMetadata() {
   console.log("Cloning julearning/metadata...");
@@ -122,34 +117,47 @@ function inferSource(filePath, cloneRoot) {
 }
 
 /**
- * Infer branch, semester, and subject from a file path for jammu-university.
- * Path pattern: .../jammu-university/btech/{branch}/semester-{N}/{subject-folder}/{file}.json
+ * Infer degree, branch, semester, and subject from a file path for jammu-university.
+ * Path pattern: .../jammu-university/{degree}/{branch}/semester-{N}/{subject-folder}/{file}.json
+ *
+ * NOTHING is hardcoded. The folder structure IS the source of truth.
+ *   segments[0] = source (e.g., "jammu-university")
+ *   segments[1] = degree (e.g., "btech", "mtech")
+ *   segments[2] = branch (e.g., "cse", "ece")
+ *   segments[3] = semester (e.g., "semester-1")
+ *   segments[4] = subject folder
+ *   segments[5+] = filename(s)
  */
 function inferFromPath(filePath, cloneRoot) {
   const relative = path.relative(cloneRoot, filePath);
   const segments = relative.split(path.sep).filter(Boolean);
 
-  let branch = "CSE";
-  let semester = 1;
-  let subject = "Unknown";
+  let degree = null;
+  let branch = null;
+  let semester = null;
+  let subject = null;
 
-  // jammu-university path: [source, degree, branch, semester-folder, subject-folder, file]
   if (segments.length >= 5) {
-    const branchSeg = segments[2]?.toLowerCase();
-    branch = BRANCH_MAP[branchSeg] || branchSeg?.toUpperCase() || "CSE";
+    // Degree = segments[1] — folder name like "btech", "mtech", "bca"
+    degree = segments[1] || null;
 
+    // Branch = segments[2] — folder name like "cse", "ece"
+    const branchSeg = segments[2] || "";
+    branch = branchSeg.toUpperCase() || null;
+
+    // Semester = segments[3] — folder name like "semester-1"
     const semSeg = segments[3] || "";
-    const semMatch = semSeg.match(/semester-(\d+)/i);
+    const semMatch = semSeg.match(/(?:sem(?:ester)?[-]?)(\d+)/i);
     if (semMatch) semester = parseInt(semMatch[1], 10);
 
     // Subject = second-to-last segment (the folder name)
     const subjectSeg = segments[segments.length - 2] || "";
     subject = subjectSeg
       .replace(/[-_]/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+      .replace(/\b\w/g, (c) => c.toUpperCase()) || null;
   }
 
-  return { branch, semester, subject };
+  return { degree, branch, semester, subject };
 }
 
 /** Check if data is a simplified array format: [{title, url, type, ...}] */
@@ -196,12 +204,12 @@ function flattenDocuments(jsonFiles, cloneRoot) {
 
       // --- Format 1: Simplified array ---
       if (isArrayFormat(data)) {
-        // For JU sources: infer branch/semester/subject from folder path
+        // For JU sources: infer degree/branch/semester/subject from folder path
         // For non-JU sources: leave them empty (just title, description, url)
         const hasPathContext = source === "jammu-university";
-        const { branch, semester, subject } = hasPathContext
+        const { degree, branch, semester, subject } = hasPathContext
           ? inferFromPath(filePath, cloneRoot)
-          : { branch: null, semester: null, subject: null };
+          : { degree: null, branch: null, semester: null, subject: null };
 
         for (const doc of data) {
           if (!doc.title || !doc.url) {
@@ -221,6 +229,7 @@ function flattenDocuments(jsonFiles, cloneRoot) {
             thumbnailUrl: doc.thumbnailUrl || "",
             fileType,
             fileSize: doc.fileSize || 0,
+            degree,
             branch,
             semester,
             subject,
@@ -233,7 +242,7 @@ function flattenDocuments(jsonFiles, cloneRoot) {
       }
       // --- Format 2: Simplified single doc ---
       else if (isSimplifiedDoc(data)) {
-        const { branch, semester, subject } = inferFromPath(filePath, cloneRoot);
+        const { degree, branch, semester, subject } = inferFromPath(filePath, cloneRoot);
         const id = `doc-${String(idCounter).padStart(4, "0")}`;
         idCounter++;
         const fileType = data.fileType || inferFileType(data.url);
@@ -246,6 +255,7 @@ function flattenDocuments(jsonFiles, cloneRoot) {
           thumbnailUrl: data.thumbnailUrl || getThumbnailUrl(data.url),
           fileType,
           fileSize: data.fileSize || 0,
+          degree,
           branch,
           semester,
           subject,
@@ -260,6 +270,8 @@ function flattenDocuments(jsonFiles, cloneRoot) {
         const id = `doc-${String(idCounter).padStart(4, "0")}`;
         idCounter++;
         const fileType = data.fileType || inferFileType(data.url);
+        // Also get degree from path for atomic docs
+        const { degree: pathDegree } = inferFromPath(filePath, cloneRoot);
 
         docs.push({
           id,
@@ -269,6 +281,7 @@ function flattenDocuments(jsonFiles, cloneRoot) {
           thumbnailUrl: data.thumbnailUrl || getThumbnailUrl(data.url),
           fileType,
           fileSize: data.fileSize || 0,
+          degree: pathDegree,
           branch: data.branch,
           semester: data.semester,
           subject: data.subject,
@@ -285,6 +298,8 @@ function flattenDocuments(jsonFiles, cloneRoot) {
         const semester = data.semester;
         const subject = data.subject;
         const sections = data.sections || {};
+        // Get degree from path for legacy subject-level docs
+        const { degree } = inferFromPath(filePath, cloneRoot);
 
         for (const [sectionKey, sectionData] of Object.entries(sections)) {
           if (sectionData && sectionData.documents) {
@@ -306,6 +321,7 @@ function flattenDocuments(jsonFiles, cloneRoot) {
                 thumbnailUrl: doc.thumbnailUrl || getThumbnailUrl(doc.url),
                 fileType,
                 fileSize: doc.fileSize || 0,
+                degree,
                 branch,
                 semester,
                 subject,
@@ -330,7 +346,6 @@ function flattenDocuments(jsonFiles, cloneRoot) {
 }
 
 function generateFile({ docs, sources }) {
-  const json = JSON.stringify(docs, null, 2);
   const lines = [
     "// Auto-generated at build time. Do not edit.",
     "// Generated by scripts/generate-data.mjs from julearning/metadata",
@@ -348,8 +363,13 @@ function generateFile({ docs, sources }) {
     "",
     "export const sources: SourceMeta[] = " + JSON.stringify(sources, null, 2) + ";",
     "",
-    "export function getUniqueBranches(): string[] {",
-    "  return [...new Set(documents.map((d: Document) => d.branch).filter(Boolean))] as string[];",
+    "export function getUniqueDegrees(): string[] {",
+    "  return [...new Set(documents.map((d: Document) => d.degree).filter(Boolean))] as string[];",
+    "}",
+    "",
+    "export function getUniqueBranches(degree?: string): string[] {",
+    "  const filtered = degree ? documents.filter((d: Document) => d.degree === degree) : documents;",
+    "  return [...new Set(filtered.map((d: Document) => d.branch).filter(Boolean))] as string[];",
     "}",
     "",
     "export function getUniqueSubjects(branch?: string): string[] {",
@@ -364,6 +384,10 @@ function generateFile({ docs, sources }) {
     "",
     "export function getDocumentsByBranch(branch: string): Document[] {",
     "  return documents.filter((d: Document) => d.branch === branch);",
+    "}",
+    "",
+    "export function getDocumentsByDegree(degree: string): Document[] {",
+    "  return documents.filter((d: Document) => d.degree === degree);",
     "}",
     "",
   ];

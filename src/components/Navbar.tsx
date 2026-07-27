@@ -5,10 +5,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
-const NAV_ITEMS: Array<{ href: string; label: string; icon?: React.ReactNode }> = [
-  { href: "/contribute", label: "Contribute" },
-  { href: "/sources", label: "Sources" },
-];
+import { getAllDegrees } from "@/data/documents";
+
+function getNavItems(): Array<{ href: string; label: string; icon?: React.ReactNode }> {
+  const degrees = getAllDegrees();
+  const items: Array<{ href: string; label: string; icon?: React.ReactNode }> = [];
+  for (const degree of degrees) {
+    items.push({ href: `/${degree.id}`, label: degree.name });
+  }
+  items.push({ href: "/sources", label: "Sources" });
+  items.push({ href: "/contribute", label: "Contribute" });
+  return items;
+}
 
 // Note: /automation/drive was merged into /contribute and deleted
 
@@ -20,6 +28,9 @@ export function Navbar() {
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  // Compute dynamic nav items
+  const navItems = getNavItems();
 
   // Close menu on resize to desktop
   useEffect(() => {
@@ -78,7 +89,7 @@ export function Navbar() {
 
         {/* Desktop nav — right side */}
         <nav className="hidden items-center gap-0 lg:flex">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <Link
               key={item.label}
               href={item.href}
@@ -98,7 +109,7 @@ export function Navbar() {
       {menuOpen && (
         <div className="border-t border-border/10 lg:hidden">
           <nav className="mx-auto flex max-w-6xl flex-col px-6 py-4">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}

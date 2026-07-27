@@ -70,11 +70,12 @@ export function searchDocuments(
   docs: Document[],
   filters: FilterState,
 ): SearchResult[] {
-  const { query, branch, semester, subject, types, sources, sort } = filters;
+  const { query, degree, branch, semester, subject, types, sources, sort } = filters;
 
   // Apply filters first
   let filtered = [...docs];
 
+  if (degree) filtered = filtered.filter((d) => d.degree === degree);
   if (branch) filtered = filtered.filter((d) => d.branch === branch);
   if (semester) filtered = filtered.filter((d) => d.semester === semester);
   if (subject) {

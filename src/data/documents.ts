@@ -10,9 +10,23 @@
 export {
   documents,
   sources,
+  getUniqueDegrees,
   getUniqueBranches,
   getUniqueSubjects,
   getUniqueSemesters,
   getDocumentsByBranch,
+  getDocumentsByDegree,
 } from "./generated-documents";
 export type { SourceMeta } from "./generated-documents";
+
+// Re-export hierarchy helpers for convenient access
+export {
+  getAllDegrees,
+  getBranchesByDegree,
+  getSemestersByBranch,
+  getSubjectsBySemester,
+  getDocumentCount,
+  getDegreeForBranch,
+  getTypesForSubject,
+} from "@/lib/hierarchy";
+export type { DegreeInfo } from "@/lib/hierarchy";

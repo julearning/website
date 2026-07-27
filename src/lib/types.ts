@@ -9,6 +9,8 @@ export interface Document {
   branch: Branch | null;
   semester: number | null;
   subject: string | null;
+  /** Degree inferred from data — "B.Tech", "M.Tech", etc. (optional, for future use) */
+  degree?: string;
   /** Single document type — handwritten, digital, pyq (optional: backward compat) */
   type?: DocType;
   /** Backward-compat: old data has tags[] instead of type */
@@ -28,7 +30,7 @@ export interface Document {
   sourcePath?: string;
 }
 
-export type Branch = "CSE" | "ECE" | "EE" | "ME" | "CE";
+export type Branch = "CSE" | "ECE" | "EE" | "ME" | "CE" | "IT" | string;
 
 export type DocType = "handwritten" | "digital" | "pyq" | "assignment" | "lab-manual" | "syllabus" | "reference-book" | "project-report" | "mixed" | "other";
 
@@ -53,6 +55,7 @@ export type RawDocument = {
 
 export type FilterState = {
   query: string;
+  degree: string | null;
   branch: Branch | null;
   semester: number | null;
   subject: string | null;

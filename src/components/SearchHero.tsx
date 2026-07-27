@@ -3,13 +3,24 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { documents } from "@/data/documents";
 import { searchDocuments, type SearchResult } from "@/lib/search";
-import type { FilterState, DocType, Branch } from "@/lib/types";
+import type { FilterState, DocType } from "@/lib/types";
 import { TYPE_LABELS } from "@/lib/types";
 import { ResultCard } from "@/components/ResultCard";
 import { PaginatedGrid } from "@/components/PaginatedGrid";
 import { SortDropdown, type SortOption } from "@/components/SortDropdown";
 import { TypeFilter } from "@/components/TypeFilter";
 import { SourceDropdown, type SourceOption } from "@/components/SourceDropdown";
+import {
+  getAllDegrees,
+  getBranchesByDegree,
+  getSemestersByBranch,
+  getSubjectsBySemester,
+  getTypesForSubject,
+  getDocumentCount,
+  type DegreeInfo,
+} from "@/lib/hierarchy";
+import { slugify, deslugifyDegree } from "@/lib/slugs";
+import { useRouter } from "next/navigation";
 
 interface SearchHeroProps {
   title?: string;
@@ -68,31 +79,29 @@ function groupBySource(results: SearchResult[]): Array<{ source: string; label: 
   return sorted;
 }
 
-/** Only JU documents for the browse chips */
-const juDocs = documents.filter((d) => d.source === "jammu-university");
+function SelectionChip({
+  label,
+  active,
+  onClick,
+  size = "md",
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  size?: "md" | "lg";
+}) {
+  const sizeClasses =
+    size === "lg"
+      ? "px-6 py-4 text-xl sm:px-10 sm:py-5 sm:text-2xl"
+      : "px-4 py-2.5 text-base sm:px-6 sm:py-3 sm:text-lg";
 
-function getBranches(): string[] {
-  return [...new Set(juDocs.map((d) => d.branch).filter(Boolean))].sort() as string[];
-}
-
-function getSemesters(branch: string): number[] {
-  return [...new Set(juDocs.filter((d) => d.branch === branch).map((d) => d.semester))].filter((s): s is number => s != null).sort((a, b) => a - b);
-}
-
-function getSubjects(branch: string, semester: number): string[] {
-  return [...new Set(juDocs.filter((d) => d.branch === branch && d.semester === semester).map((d) => d.subject).filter((s): s is string => !!s))]
-    .filter((s) => !/^Semester\s+\d+$/i.test(s))
-    .sort();
-}
-
-function BrowseChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`px-6 py-4 text-xl font-bold transition-all duration-200 sm:px-10 sm:py-5 sm:text-2xl ${
+      className={`${sizeClasses} font-bold transition-all duration-200 ${
         active
-          ? "bg-brand text-white"
-          : "bg-surface text-foreground hover:bg-brand hover:text-white"
+          ? "bg-brand text-white shadow-lg shadow-brand/20"
+          : "bg-surface text-foreground hover:bg-brand hover:text-white hover:shadow-lg hover:shadow-brand/20"
       }`}
     >
       {label}
@@ -100,13 +109,15 @@ function BrowseChip({ label, active, onClick }: { label: string; active: boolean
   );
 }
 
+
+
 export function SearchHero({
   title: propTitle,
   subtitle: propSubtitle,
-  defaultType,
-  searchOnMount,
+  defaultType,    searchOnMount,
   defaultSource,
 }: SearchHeroProps) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,34 +126,62 @@ export function SearchHero({
   const [sort, setSort] = useState<SortOption>("relevance");
   const [activeType, setActiveType] = useState<DocType | null>(defaultType ?? null);
   const [activeSources, setActiveSources] = useState<string[]>(defaultSource ? [defaultSource] : []);
-  const [activeBranch, setActiveBranch] = useState<string | null>(null);
-  const [activeSemester, setActiveSemester] = useState<number | null>(null);
-  const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Progressive Cascade State ──────────────────────────────────
+  const degrees = useMemo(() => getAllDegrees(), []);
+  const [selectedDegree, setSelectedDegree] = useState<string | null>(null);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+
+  // Derived options for each step
+  const branches = useMemo(
+    () => (selectedDegree ? getBranchesByDegree(selectedDegree) : []),
+    [selectedDegree],
+  );
+  const semesters = useMemo(
+    () =>
+      selectedDegree && selectedBranch
+        ? getSemestersByBranch(selectedDegree, selectedBranch)
+        : [],
+    [selectedDegree, selectedBranch],
+  );
+  const subjects = useMemo(
+    () =>
+      selectedDegree && selectedBranch && selectedSemester != null
+        ? getSubjectsBySemester(selectedDegree, selectedBranch, selectedSemester)
+        : [],
+    [selectedDegree, selectedBranch, selectedSemester],
+  );
+  const types = useMemo(
+    () =>
+      selectedDegree && selectedBranch && selectedSemester != null && selectedSubject
+        ? getTypesForSubject(selectedDegree, selectedBranch, selectedSemester, selectedSubject)
+        : [],
+    [selectedDegree, selectedBranch, selectedSemester, selectedSubject],
+  );
 
   // Determine title/subtitle based on active source
   const selectedSource = activeSources.length === 1 ? activeSources[0] : null;
   const title = propTitle || (selectedSource ? getSourceTitle(selectedSource) : "JU Learning");
   const subtitle = propSubtitle || (selectedSource ? getSourceSubtitle(selectedSource) : "Every branch. Every semester. Every note.");
 
-  // Compute browse chip options
-  const branches = useMemo(() => getBranches(), []);
-  const semesters = useMemo(() => activeBranch ? getSemesters(activeBranch) : [], [activeBranch]);
-  const subjects = useMemo(() => activeBranch && activeSemester ? getSubjects(activeBranch, activeSemester) : [], [activeBranch, activeSemester]);
-
   // Compute available sources from documents
   const availableSources: SourceOption[] = useMemo(() => {
     const sourceSet = new Set(documents.map((d) => d.source));
-    return Array.from(sourceSet).sort((a, b) => {
-      const ra = SOURCE_RANK[a] ?? 1;
-      const rb = SOURCE_RANK[b] ?? 1;
-      if (ra !== rb) return ra - rb;
-      return a.localeCompare(b);
-    }).map((id) => ({
-      id,
-      label: getSourceLabel(id),
-    }));
+    return Array.from(sourceSet)
+      .sort((a, b) => {
+        const ra = SOURCE_RANK[a] ?? 1;
+        const rb = SOURCE_RANK[b] ?? 1;
+        if (ra !== rb) return ra - rb;
+        return a.localeCompare(b);
+      })
+      .map((id) => ({
+        id,
+        label: getSourceLabel(id),
+      }));
   }, []);
 
   async function performSearch(
@@ -150,37 +189,43 @@ export function SearchHero({
     sortOverride?: SortOption,
     typeOverride?: DocType | null,
     sourcesOverride?: string[],
-    branchOverride?: string | null,
-    semesterOverride?: number | null,
-    subjectOverride?: string | null,
   ) {
     const qTrim = q.trim();
-    const currentBranch = branchOverride ?? activeBranch;
-    const currentSemester = semesterOverride ?? activeSemester;
-    const currentSubject = subjectOverride ?? activeSubject;
     const currentSources = sourcesOverride ?? activeSources;
     const currentType = typeOverride ?? activeType;
 
-    // Don't clear if there are browse selections
-    if (!qTrim && !currentType && currentSources.length === 0 && !currentBranch && !currentSemester && !currentSubject) {
+    // Build filter state from cascade + type + source
+    const filters: FilterState = {
+      query: q,
+      degree: selectedDegree,
+      branch: (selectedBranch as any) || null,
+      semester: selectedSemester,
+      subject: selectedSubject,
+      types: currentType ? [currentType] : [],
+      sources: currentSources,
+      sort: sortOverride ?? sort,
+    };
+
+    // If nothing is selected and no query, clear results
+    if (
+      !qTrim &&
+      !currentType &&
+      currentSources.length === 0 &&
+      !selectedDegree &&
+      !selectedBranch &&
+      selectedSemester == null &&
+      !selectedSubject
+    ) {
       setResults([]);
       setHasSearched(false);
       return;
     }
+
     setIsLoading(true);
     setHasSearched(true);
 
     await new Promise((r) => setTimeout(r, 200));
 
-    const filters: FilterState = {
-      query: q,
-      branch: currentBranch as Branch | null,
-      semester: currentSemester,
-      subject: currentSubject,
-      types: currentType ? [currentType] : [],
-      sources: currentSources,
-      sort: sortOverride ?? sort,
-    };
     const found = searchDocuments(documents, filters);
     setResults(found);
     setIsLoading(false);
@@ -243,6 +288,14 @@ export function SearchHero({
     };
   }, []);
 
+  // Re-run search when cascade selections change
+  useEffect(() => {
+    if (hasSearched || selectedDegree || selectedBranch || selectedSemester != null || selectedSubject) {
+      performSearch(query);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBranch, selectedSemester, selectedSubject, selectedDegree, activeType]);
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setQuery(val);
@@ -270,9 +323,10 @@ export function SearchHero({
     setSort("relevance");
     setActiveType(defaultType ?? null);
     setActiveSources(defaultSource ? [defaultSource] : []);
-    setActiveBranch(null);
-    setActiveSemester(null);
-    setActiveSubject(null);
+    setSelectedDegree(null);
+    setSelectedBranch(null);
+    setSelectedSemester(null);
+    setSelectedSubject(null);
     inputRef.current?.focus();
   }
 
@@ -290,45 +344,74 @@ export function SearchHero({
 
   function handleSourcesChange(newSources: string[]) {
     setActiveSources(newSources);
-    // If switching away from a single source, reset the title
     performSearch(query, undefined, undefined, newSources);
   }
 
-  // Browse chip handlers
-  function handleBranchClick(branch: string) {
-    if (branch === activeBranch) {
-      setActiveBranch(null);
-      setActiveSemester(null);
-      setActiveSubject(null);
-      performSearch(query, undefined, undefined, undefined, null, null, null);
+  // ── Cascade Handlers ───────────────────────────────────────────
+  function handleDegreeClick(degreeId: string) {
+    if (degreeId === selectedDegree) {
+      // Deselect
+      setSelectedDegree(null);
+      setSelectedBranch(null);
+      setSelectedSemester(null);
+      setSelectedSubject(null);
+      setActiveType(defaultType ?? null);
     } else {
-      setActiveBranch(branch);
-      setActiveSemester(null);
-      setActiveSubject(null);
-      performSearch(query, undefined, undefined, undefined, branch, null, null);
+      setSelectedDegree(degreeId);
+      setSelectedBranch(null);
+      setSelectedSemester(null);
+      setSelectedSubject(null);
+      setActiveType(defaultType ?? null);
+    }
+  }
+
+  function handleBranchClick(branch: string) {
+    if (branch === selectedBranch) {
+      setSelectedBranch(null);
+      setSelectedSemester(null);
+      setSelectedSubject(null);
+      setActiveType(defaultType ?? null);
+    } else {
+      setSelectedBranch(branch);
+      setSelectedSemester(null);
+      setSelectedSubject(null);
+      setActiveType(defaultType ?? null);
     }
   }
 
   function handleSemesterClick(sem: number) {
-    if (sem === activeSemester) {
-      setActiveSemester(null);
-      setActiveSubject(null);
-      performSearch(query, undefined, undefined, undefined, undefined, null, null);
+    if (sem === selectedSemester) {
+      setSelectedSemester(null);
+      setSelectedSubject(null);
+      setActiveType(defaultType ?? null);
     } else {
-      setActiveSemester(sem);
-      setActiveSubject(null);
-      performSearch(query, undefined, undefined, undefined, undefined, sem, null);
+      setSelectedSemester(sem);
+      setSelectedSubject(null);
+      setActiveType(defaultType ?? null);
     }
   }
 
   function handleSubjectClick(subject: string) {
-    if (subject === activeSubject) {
-      setActiveSubject(null);
-      performSearch(query, undefined, undefined, undefined, undefined, undefined, null);
+    if (subject === selectedSubject) {
+      setSelectedSubject(null);
+      setActiveType(defaultType ?? null);
     } else {
-      setActiveSubject(subject);
-      performSearch(query, undefined, undefined, undefined, undefined, undefined, subject);
+      setSelectedSubject(subject);
+      setActiveType(null); // Reset type when subject changes
     }
+  }
+
+  // Navigate to the full page for the current selection
+  function handleBrowseToPage() {
+    if (!selectedDegree || !selectedBranch) return;
+    let path = `/${selectedDegree}/${slugify(selectedBranch)}`;
+    if (selectedSemester != null) {
+      path += `/sem-${selectedSemester}`;
+      if (selectedSubject) {
+        path += `/${slugify(selectedSubject)}`;
+      }
+    }
+    router.push(path);
   }
 
   // Group results by source
@@ -339,8 +422,9 @@ export function SearchHero({
 
   const showSourceHeadings = activeSources.length <= 1 && availableSources.length > 1;
 
-  // Step indicator
-  const showStepIndicator = activeBranch || activeSemester || activeSubject;
+  // Selection state for showing the cascade
+  const hasAnySelection = selectedDegree || selectedBranch || selectedSemester != null || selectedSubject;
+  const selectionCount = [selectedDegree, selectedBranch, selectedSemester != null, !!selectedSubject].filter(Boolean).length;
 
   return (
     <>
@@ -394,7 +478,7 @@ export function SearchHero({
             )}
           </div>
 
-          {/* Filters — above browse chips */}
+          {/* Filters — above the cascade */}
           <div className="flex flex-wrap items-center justify-end gap-1 pt-4">
             <SortDropdown value={sort} onChange={handleSortChange} />
             <TypeFilter activeType={activeType} onChange={handleTypeChange} />
@@ -407,86 +491,184 @@ export function SearchHero({
             )}
           </div>
 
-          {/* Browse chips — right below the search bar, big and bold */}
-          {branches.length > 0 && (
-            <div className="mt-6 text-left">
-              {showStepIndicator && (
-                <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground/60">
-                  <button
-                    onClick={() => { setActiveBranch(null); setActiveSemester(null); setActiveSubject(null); setResults([]); setHasSearched(false); }}
-                    className="hover:text-foreground transition-colors font-bold"
-                  >
-                    Browse
-                  </button>
-                  {activeBranch && <><span>/</span><span className="font-bold text-foreground">{activeBranch}</span></>}
-                  {activeSemester && <><span>/</span><span className="font-bold text-foreground">Sem {activeSemester}</span></>}
-                  {activeSubject && <><span>/</span><span className="font-bold text-foreground">{activeSubject}</span></>}
-                </div>
-              )}
+          {/* ── Progressive Cascade ─────────────────────────────────── */}
+          <div className="mt-8 text-left">
+            {/* Breadcrumb-style indicator */}
+            {hasAnySelection && (
+              <div className="mb-5 flex flex-wrap items-center gap-2 text-sm">
+                <button
+                  onClick={() => {
+                    setSelectedDegree(null);
+                    setSelectedBranch(null);
+                    setSelectedSemester(null);
+                    setSelectedSubject(null);
+                    setActiveType(defaultType ?? null);
+                    setResults([]);
+                    setHasSearched(false);
+                  }}
+                  className="font-bold text-muted-foreground/60 hover:text-foreground transition-colors"
+                >
+                  Browse
+                </button>
+                {selectedDegree && (
+                  <>
+                    <span className="text-muted-foreground/30">/</span>
+                    <span className="font-bold text-foreground">
+                      {deslugifyDegree(selectedDegree)}
+                    </span>
+                  </>
+                )}
+                {selectedBranch && (
+                  <>
+                    <span className="text-muted-foreground/30">/</span>
+                    <span className="font-bold text-foreground">{selectedBranch}</span>
+                  </>
+                )}
+                {selectedSemester != null && (
+                  <>
+                    <span className="text-muted-foreground/30">/</span>
+                    <span className="font-bold text-foreground">Sem {selectedSemester}</span>
+                  </>
+                )}
+                {selectedSubject && (
+                  <>
+                    <span className="text-muted-foreground/30">/</span>
+                    <span className="font-bold text-foreground">{selectedSubject}</span>
+                  </>
+                )}
+              </div>
+            )}
 
-              <div className="flex flex-wrap gap-4">
-                {!activeBranch ? (
-                  /* Step 1: Show all branches */
-                  branches.map((branch) => (
-                    <BrowseChip
+            {/* Step 1: Degree (always starts here — user must choose) */}
+            {degrees.length > 0 && (
+              <div className="mb-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
+                  {!selectedDegree ? "Select your degree" : "Degree"}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {degrees.map((deg) => (
+                    <SelectionChip
+                      key={deg.id}
+                      label={deg.name}
+                      active={selectedDegree === deg.id}
+                      onClick={() => handleDegreeClick(deg.id)}
+                      size="md"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Branch */}
+            {selectedDegree && branches.length > 0 && (
+              <div className="mb-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
+                  {!selectedBranch ? "Select your branch" : "Branch"}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {branches.map((branch) => (
+                    <SelectionChip
                       key={branch}
                       label={branch}
-                      active={false}
+                      active={selectedBranch === branch}
                       onClick={() => handleBranchClick(branch)}
+                      size="lg"
                     />
-                  ))
-                ) : !activeSemester ? (
-                  /* Step 2: Show semesters for selected branch */
-                  semesters.map((sem) => (
-                    <BrowseChip
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Semester */}
+            {selectedBranch && semesters.length > 0 && (
+              <div className="mb-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
+                  {selectedSemester == null ? "Select your semester" : "Semester"}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {semesters.map((sem) => (
+                    <SelectionChip
                       key={sem}
                       label={`Semester ${sem}`}
-                      active={false}
+                      active={selectedSemester === sem}
                       onClick={() => handleSemesterClick(sem)}
+                      size="md"
                     />
-                  ))
-                ) : !activeSubject ? (
-                  /* Step 3: Show subjects for selected branch + semester */
-                  subjects.map((subj) => (
-                    <BrowseChip
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Subject */}
+            {selectedSemester != null && subjects.length > 0 && (
+              <div className="mb-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
+                  {!selectedSubject ? "Select your subject" : "Subject"}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {subjects.map((subj) => (
+                    <SelectionChip
                       key={subj}
                       label={subj}
-                      active={false}
+                      active={selectedSubject === subj}
                       onClick={() => handleSubjectClick(subj)}
+                      size="md"
                     />
-                  ))
-                ) : null}
+                  ))}
+                </div>
               </div>
+            )}
 
-              {/* Back button when a selection is made */}
-              {activeBranch && !activeSemester && (
-                <button
-                  onClick={() => handleBranchClick(activeBranch)}
-                  className="mt-4 text-sm text-muted-foreground/50 hover:text-foreground transition-colors"
-                >
-                  ← Back to branches
-                </button>
-              )}
-              {activeSemester && !activeSubject && (
-                <button
-                  onClick={() => handleSemesterClick(activeSemester)}
-                  className="mt-4 text-sm text-muted-foreground/50 hover:text-foreground transition-colors"
-                >
-                  ← Back to semesters
-                </button>
-              )}
-              {activeSubject && (
-                <button
-                  onClick={() => handleSubjectClick(activeSubject)}
-                  className="mt-4 text-sm text-muted-foreground/50 hover:text-foreground transition-colors"
-                >
-                  ← Back to subjects
-                </button>
-              )}
-            </div>
-          )}
+            {/* Step 5: Type filter (only when subject selected) */}
+            {selectedSubject && types.length > 1 && (
+              <div className="mb-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">
+                  Filter by type
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <SelectionChip
+                    label="All"
+                    active={activeType === null}
+                    onClick={() => handleTypeChange(null)}
+                    size="md"
+                  />
+                  {types.map((t) => (
+                    <SelectionChip
+                      key={t}
+                      label={TYPE_LABELS[t] || t}
+                      active={activeType === t}
+                      onClick={() => handleTypeChange(t as DocType)}
+                      size="md"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
-
+            {/* View full page button */}
+            {selectedDegree && selectedBranch && (
+              <div className="mt-5">
+                <button
+                  onClick={handleBrowseToPage}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-bold text-sm transition-all duration-200 hover:opacity-90"
+                >
+                  View all{" "}
+                  {selectedBranch}
+                  {selectedSemester != null ? ` Sem ${selectedSemester}` : ""}
+                  {selectedSubject ? ` · ${selectedSubject}` : ""}
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -496,14 +678,19 @@ export function SearchHero({
           {!isLoading && (
             <p className="mb-4 text-sm text-muted-foreground">
               {results.length} result{results.length !== 1 ? "s" : ""}
-              {isFocused && query.trim() && !isLoading && <span className="ml-2 text-muted-foreground/40">· auto-searching in 1s</span>}
+              {isFocused && query.trim() && !isLoading && (
+                <span className="ml-2 text-muted-foreground/40">· auto-searching in 1s</span>
+              )}
             </p>
           )}
 
           {isLoading ? (
             <div className="columns-2 gap-5 lg:columns-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="mb-5 animate-pulse break-inside-avoid overflow-hidden bg-surface">
+                <div
+                  key={i}
+                  className="mb-5 animate-pulse break-inside-avoid overflow-hidden bg-surface"
+                >
                   <div className="h-56 bg-accent" />
                   <div className="p-4">
                     <div className="mb-2 h-4 w-3/4 bg-accent/50" />
@@ -512,40 +699,59 @@ export function SearchHero({
                 </div>
               ))}
             </div>
-          ) : results.length === 0 ? (
+          ) : results.length === 0 && query.trim() ? (
             <div className="flex flex-col items-center py-20 text-center">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 h-12 w-12 text-muted-foreground/20">
-                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /><path d="M8 11h6" /><path d="M11 8v6" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mb-4 h-12 w-12 text-muted-foreground/20"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+                <path d="M8 11h6" />
+                <path d="M11 8v6" />
               </svg>
               <p className="text-base font-medium text-muted-foreground">No results found.</p>
-              <p className="mt-2 text-sm text-muted-foreground/50">Try broadening your search or removing some filters.</p>
+              <p className="mt-2 text-sm text-muted-foreground/50">
+                Try broadening your search or removing some filters.
+              </p>
             </div>
-          ) : grouped.length === 1 ? (
-            <PaginatedGrid
-              items={grouped[0].docs}
-              renderItem={(result) => <ResultCard key={result.doc.id} result={result} />}
-              itemsPerPage={9}
-            />
-          ) : (
-            <div className="space-y-12">
-              {grouped.map((group) => (
-                <section key={group.source}>
-                  {showSourceHeadings && (
-                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground/60">
-                      {group.label}
-                    </h2>
-                  )}
-                  <PaginatedGrid
-                    items={group.docs}
-                    renderItem={(result) => <ResultCard key={result.doc.id} result={result} />}
-                    itemsPerPage={9}
-                  />
-                </section>
-              ))}
-            </div>
-          )}
+          ) : results.length > 0 ? (
+            grouped.length === 1 ? (
+              <PaginatedGrid
+                items={grouped[0].docs}
+                renderItem={(result) => <ResultCard key={result.doc.id} result={result} />}
+                itemsPerPage={9}
+              />
+            ) : (
+              <div className="space-y-12">
+                {grouped.map((group) => (
+                  <section key={group.source}>
+                    {showSourceHeadings && (
+                      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground/60">
+                        {group.label}
+                      </h2>
+                    )}
+                    <PaginatedGrid
+                      items={group.docs}
+                      renderItem={(result) => (
+                        <ResultCard key={result.doc.id} result={result} />
+                      )}
+                      itemsPerPage={9}
+                    />
+                  </section>
+                ))}
+              </div>
+            )
+          ) : null}
         </div>
       )}
     </>
   );
 }
+
+

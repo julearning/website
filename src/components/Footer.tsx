@@ -1,6 +1,14 @@
 import Link from "next/link";
+import { getAllDegrees, getBranchesByDegree } from "@/data/documents";
+import { slugify } from "@/lib/slugs";
 
 export function Footer() {
+  const degrees = getAllDegrees();
+  // Pick the first degree for the default browse link
+  const defaultDegree = degrees[0];
+  const defaultDegreeHref = defaultDegree ? `/${defaultDegree.id}` : "/";
+  const branches = defaultDegree ? getBranchesByDegree(defaultDegree.id) : [];
+
   return (
     <footer>
       <div className="mx-auto max-w-6xl px-6 py-12">
@@ -14,7 +22,7 @@ export function Footer() {
               JU Learning
             </Link>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Open source study materials for B.Tech students. Free access to
+              Open source study materials for students. Free access to
               notes, PYQs, and more.
             </p>
           </div>
@@ -25,22 +33,16 @@ export function Footer() {
               Browse
             </h3>
             <ul className="mt-3 space-y-2">
-              <li>
-                <Link
-                  href="/branches"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Branches
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/subjects"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Subjects
-                </Link>
-              </li>
+              {degrees.map((d) => (
+                <li key={d.id}>
+                  <Link
+                    href={`/${d.id}`}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {d.fullName} ({d.name})
+                  </Link>
+                </li>
+              ))}
               <li>
                 <Link
                   href="/sources"
@@ -58,13 +60,13 @@ export function Footer() {
               Branches
             </h3>
             <ul className="mt-3 space-y-2">
-              {(["cse", "ece", "ee", "me", "ce"] as const).map((slug) => (
-                <li key={slug}>
+              {branches.map((branch) => (
+                <li key={branch}>
                   <Link
-                    href={`/branches/${slug}`}
+                    href={`/${defaultDegree!.id}/${slugify(branch)}`}
                     className="text-sm capitalize text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    {slug.toUpperCase()}
+                    {branch}
                   </Link>
                 </li>
               ))}
