@@ -1,4 +1,4 @@
-# JU Learning — Website
+# JU Learning — Website 
 
 Frontend for JU Learning — a study material directory for engineering students. Discover notes, PYQs, textbooks, and reference materials across multiple sources.
 
