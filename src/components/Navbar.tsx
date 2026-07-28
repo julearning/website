@@ -1,22 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 
 import { getAllDegrees } from "@/data/documents";
 import { hasPreferences } from "@/lib/preferences";
 
-function getNavItems(): Array<{ href: string; label: string; icon?: React.ReactNode }> {
-  const degrees = getAllDegrees();
-  const items: Array<{ href: string; label: string; icon?: React.ReactNode }> = [];
-  for (const degree of degrees) {
-    items.push({ href: `/${degree.id}`, label: degree.name });
-  }
-  items.push({ href: "/sources", label: "Sources" });
-  items.push({ href: "/contribute", label: "Contribute" });
-  return items;
+function getDegreeItems() {
+  return getAllDegrees();
 }
 
 // Note: /automation/drive was merged into /contribute and deleted
@@ -24,11 +17,14 @@ function getNavItems(): Array<{ href: string; label: string; icon?: React.ReactN
 export function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [degreesOpen, setDegreesOpen] = useState(false);
   const [savedPrefsExist, setSavedPrefsExist] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close menu on route change
   useEffect(() => {
     setMenuOpen(false);
+    setDegreesOpen(false);
   }, [pathname]);
 
   // Check if preferences exist (for the indicator dot)
@@ -39,8 +35,16 @@ export function Navbar() {
     return () => window.removeEventListener("julearning-preferences-changed", handler);
   }, []);
 
-  // Compute dynamic nav items
-  const navItems = getNavItems();
+  // Close degree dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDegreesOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Close menu on resize to desktop
   useEffect(() => {
@@ -50,6 +54,9 @@ export function Navbar() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  const degreeItems = getDegreeItems();
+  const isDegreeActive = degreeItems.some((d) => pathname.startsWith(`/${d.id}`));
 
   const isPageActive = (href: string) =>
     pathname.startsWith(href)
@@ -99,16 +106,55 @@ export function Navbar() {
 
         {/* Desktop nav — right side */}
         <nav className="hidden items-center gap-0 lg:flex">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`flex items-center gap-1.5 rounded-none px-4 py-3 text-xl font-semibold transition-all duration-200 hover:bg-accent ${isPageActive(item.href)}`}
+          {/* Degrees dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setDegreesOpen(!degreesOpen)}
+              className={`flex items-center gap-1 rounded-none px-4 py-3 text-xl font-semibold transition-all duration-200 hover:bg-accent ${
+                isDegreeActive
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
-              {item.icon}
-              {item.label}
-            </Link>
-          ))}
+              Degrees
+              <ChevronDown
+                className={`h-4 w-4 transition-transform duration-200 ${
+                  degreesOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {degreesOpen && (
+              <div className="absolute right-0 top-full z-50 min-w-[200px] border border-border/10 bg-surface shadow-xl">
+                {degreeItems.map((degree) => (
+                  <Link
+                    key={degree.id}
+                    href={`/${degree.id}`}
+                    onClick={() => setDegreesOpen(false)}
+                    className={`block px-5 py-3 text-base font-medium transition-colors duration-200 hover:bg-accent ${
+                      pathname.startsWith(`/${degree.id}`)
+                        ? "text-foreground font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {degree.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Link
+            href="/sources"
+            className={`flex items-center gap-1.5 rounded-none px-4 py-3 text-xl font-semibold transition-all duration-200 hover:bg-accent ${isPageActive("/sources")}`}
+          >
+            Sources
+          </Link>
+          <Link
+            href="/contribute"
+            className={`flex items-center gap-1.5 rounded-none px-4 py-3 text-xl font-semibold transition-all duration-200 hover:bg-accent ${isPageActive("/contribute")}`}
+          >
+            Contribute
+          </Link>
           <Link
             href="/settings"
             className={`flex items-center gap-1.5 rounded-none px-4 py-3 text-xl font-semibold transition-all duration-200 hover:bg-accent ${isPageActive("/settings")}`}
@@ -128,21 +174,35 @@ export function Navbar() {
       {menuOpen && (
         <div className="border-t border-border/10 lg:hidden">
           <nav className="mx-auto flex max-w-6xl flex-col px-6 py-4">
-            {navItems.map((item) => (
+            {degreeItems.map((item) => (
               <Link
-                key={item.label}
-                href={item.href}
+                key={item.id}
+                href={`/${item.id}`}
                 onClick={closeMenu}
                 className={`flex items-center gap-2 py-5 text-2xl font-bold transition-opacity hover:opacity-60 ${
-                  pathname.startsWith(item.href)
+                  pathname.startsWith(`/${item.id}`)
                     ? "text-brand"
                     : "text-foreground"
                 }`}
               >
-                {item.icon}
-                {item.label}
+                {item.name}
               </Link>
             ))}
+            <div className="my-4 h-px bg-border/10" />
+            <Link
+              href="/sources"
+              onClick={closeMenu}
+              className="flex items-center gap-2 py-5 text-2xl font-bold text-foreground transition-opacity hover:opacity-60"
+            >
+              Sources
+            </Link>
+            <Link
+              href="/contribute"
+              onClick={closeMenu}
+              className="flex items-center gap-2 py-5 text-2xl font-bold text-foreground transition-opacity hover:opacity-60"
+            >
+              Contribute
+            </Link>
             <div className="my-4 h-px bg-border/10" />
             <div className="flex items-center justify-between py-4">
               <Link
