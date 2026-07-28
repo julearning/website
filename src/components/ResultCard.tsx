@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import type { SearchResult } from "@/lib/search";
 import { getThumbnailUrl, TYPE_LABELS } from "@/lib/types";
 import { reportBrokenLink } from "@/lib/report";
+import { JUThumbnail } from "./JUThumbnail";
 
 export function ResultCard({ result }: { result: SearchResult }) {
   const [imgFailed, setImgFailed] = useState(false);
@@ -15,6 +17,37 @@ export function ResultCard({ result }: { result: SearchResult }) {
 
   const docType = doc.type || (doc.tags && doc.tags[0]) || "";
 
+  /** Determine the thumbnail content */
+  let thumbContent: ReactNode;
+  if (showThumb) {
+    thumbContent = (
+      <>
+        <img
+          src={thumbUrl}
+          alt={doc.title}
+          className="w-full transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          onError={() => setImgFailed(true)}
+        />
+        <div className="absolute inset-0 bg-transparent transition-colors duration-300 group-hover:bg-[#bf00ff]/10" />
+      </>
+    );
+  } else if (doc.source === "jammu-university") {
+    thumbContent = (
+      <div className="aspect-[9/16] w-full overflow-hidden">
+        <JUThumbnail />
+      </div>
+    );
+  } else {
+    thumbContent = (
+      <div className="flex h-72 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
+        <span className="text-6xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
+          {doc.title.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="group block break-inside-avoid bg-surface transition-all duration-300 hover:bg-brand mb-5">
       <a
@@ -25,24 +58,7 @@ export function ResultCard({ result }: { result: SearchResult }) {
       >
         {/* Thumbnail */}
         <div className="relative overflow-hidden bg-accent">
-          {showThumb ? (
-            <>
-              <img
-                src={thumbUrl}
-                alt={doc.title}
-                className="w-full transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-                onError={() => setImgFailed(true)}
-              />
-              <div className="absolute inset-0 bg-transparent transition-colors duration-300 group-hover:bg-[#bf00ff]/10" />
-            </>
-          ) : (
-            <div className="flex h-72 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
-              <span className="text-6xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
-                {doc.title.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
+          {thumbContent}
           {/* Type badge */}
           {docType && (
             <div className="absolute left-3 top-3">

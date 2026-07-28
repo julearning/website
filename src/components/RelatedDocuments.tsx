@@ -1,14 +1,46 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import type { Document as JLDoc } from "@/lib/types";
 import { getThumbnailUrl, TYPE_LABELS } from "@/lib/types";
+import { JUThumbnail } from "./JUThumbnail";
 
 function RelatedCard({ doc }: { doc: JLDoc }) {
   const [imgFailed, setImgFailed] = useState(false);
   const thumbUrl = doc.thumbnailUrl || getThumbnailUrl(doc.url);
   const showThumb = thumbUrl && !imgFailed;
   const docType = doc.type || (doc.tags && doc.tags[0]) || "";
+
+  let thumbContent: ReactNode;
+  if (showThumb) {
+    thumbContent = (
+      <>
+        <img
+          src={thumbUrl}
+          alt={doc.title}
+          className="w-full transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          onError={() => setImgFailed(true)}
+        />
+        <div className="absolute inset-0 bg-transparent transition-colors duration-300 group-hover:bg-[#bf00ff]/10" />
+      </>
+    );
+  } else if (doc.source === "jammu-university") {
+    thumbContent = (
+      <div className="aspect-[9/16] w-full overflow-hidden">
+        <JUThumbnail />
+      </div>
+    );
+  } else {
+    thumbContent = (
+      <div className="flex h-40 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
+        <span className="text-3xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
+          {doc.title.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <a
@@ -19,24 +51,7 @@ function RelatedCard({ doc }: { doc: JLDoc }) {
     >
       {/* Thumbnail */}
       <div className="relative overflow-hidden bg-accent">
-        {showThumb ? (
-          <>
-            <img
-              src={thumbUrl}
-              alt={doc.title}
-              className="w-full transition-transform duration-500 group-hover:scale-105"
-              loading="lazy"
-              onError={() => setImgFailed(true)}
-            />
-            <div className="absolute inset-0 bg-transparent transition-colors duration-300 group-hover:bg-[#bf00ff]/10" />
-          </>
-        ) : (
-          <div className="flex h-40 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
-            <span className="text-3xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
-              {doc.title.charAt(0).toUpperCase()}
-            </span>
-          </div>
-        )}
+        {thumbContent}
         {/* Type badge */}
         {docType && (
           <div className="absolute left-3 top-3">

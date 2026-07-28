@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { documents } from "@/data/documents";
 import type { Document } from "@/lib/types";
 import { getThumbnailUrl } from "@/lib/types";
 import { reportBrokenLink } from "@/lib/report";
 import { SearchHero } from "@/components/SearchHero";
+import { JUThumbnail } from "@/components/JUThumbnail";
 import { getAllContributors } from "@/lib/contributors";
 
 const CATEGORY_SECTIONS = [
@@ -84,6 +86,33 @@ export default function Home() {
     const thumb = doc.thumbnailUrl || getThumbnailUrl(doc.url);
     const showThumb = thumb && !imgFailed;
 
+    let thumbContent: ReactNode;
+    if (showThumb) {
+      thumbContent = (
+        <img
+          src={thumb}
+          alt={doc.title}
+          className="w-full transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          onError={() => setImgFailed(true)}
+        />
+      );
+    } else if (doc.source === "jammu-university") {
+      thumbContent = (
+        <div className="aspect-[9/16] w-full overflow-hidden">
+          <JUThumbnail />
+        </div>
+      );
+    } else {
+      thumbContent = (
+        <div className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
+          <span className="text-3xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
+            {doc.title.charAt(0).toUpperCase()}
+          </span>
+        </div>
+      );
+    }
+
     return (
       <div className="group block break-inside-avoid bg-surface transition-all duration-300 hover:bg-brand mb-5">
         <a
@@ -93,21 +122,7 @@ export default function Home() {
           className="block overflow-hidden"
         >
           <div className="relative overflow-hidden bg-accent">
-            {showThumb ? (
-              <img
-                src={thumb}
-                alt={doc.title}
-                className="w-full transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-                onError={() => setImgFailed(true)}
-              />
-            ) : (
-              <div className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-accent to-accent/50 transition-colors duration-300 group-hover:from-brand group-hover:to-brand/80">
-                <span className="text-3xl font-light text-muted-foreground/20 transition-colors duration-300 group-hover:text-white/30">
-                  {doc.title.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
+            {thumbContent}
           </div>
           <div className="p-4 transition-colors duration-300">
             <p className="text-sm font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-white">
