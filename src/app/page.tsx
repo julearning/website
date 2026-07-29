@@ -174,8 +174,12 @@ export default function Home() {
           cat.docs.length > 0 ? (
             <section key={cat.type}>
               <div className="mb-6">
-                <h2 className="text-xl font-bold text-foreground">{cat.title}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{cat.subtitle}</p>
+                <h2 className="text-xl font-bold text-foreground">
+                  {cat.title}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {cat.subtitle}
+                </p>
               </div>
               <div className="columns-2 gap-3 lg:columns-3">
                 {cat.docs.map((doc) => (
@@ -184,26 +188,40 @@ export default function Home() {
               </div>
               {/* View More link — navigates to dedicated type page */}
               <Link
-                href={cat.type === "pyq" ? "/pyq" : cat.type === "handwritten" ? "/handwritten" : "/digital-notes"}
+                href={
+                  cat.type === "pyq"
+                    ? "/pyq"
+                    : cat.type === "handwritten"
+                      ? "/handwritten"
+                      : "/digital-notes"
+                }
                 className="group mt-5 block w-full bg-surface transition-all duration-300 hover:bg-brand overflow-hidden"
               >
                 <div className="flex min-h-[80px] w-full items-center justify-between bg-surface px-8 transition-colors duration-300 group-hover:bg-brand">
                   <span className="text-lg font-bold text-foreground transition-colors duration-300 group-hover:text-white">
                     View More {cat.title}
                   </span>
-                  <svg className="h-5 w-5 text-foreground transition-all duration-300 group-hover:text-white group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  <svg
+                    className="h-5 w-5 text-foreground transition-all duration-300 group-hover:text-white group-hover:translate-x-1"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </div>
               </Link>
             </section>
-          ) : null
+          ) : null,
         )}
 
         {/* Recently Added */}
         {recentDocs.length > 0 && (
           <section>
-            <h2 className="mb-6 text-xl font-bold text-foreground">Recently Added</h2>
+            <h2 className="mb-6 text-xl font-bold text-foreground">
+              Recently Added
+            </h2>
             <div className="columns-2 gap-5 lg:columns-3">
               {recentDocs.map((doc) => (
                 <CategoryCard key={doc.id} doc={doc} />
@@ -245,6 +263,33 @@ export default function Home() {
         <p className="mt-10 text-xl font-bold text-muted-foreground sm:text-2xl">
           The next one can be you.
         </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+          <a
+            href="https://exampapers5.blogspot.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-2 text-base font-medium text-muted-foreground transition-colors hover:text-brand"
+          >
+            exampapers5.blogspot.com <span className="text-xs">↗</span>
+          </a>
+          <a
+            href="https://jammuuniversitypapers.blogspot.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-2 text-base font-medium text-muted-foreground transition-colors hover:text-brand"
+          >
+            jammuuniversitypapers.blogspot.com{" "}
+            <span className="text-xs">↗</span>
+          </a>
+          <a
+            href="https://jktopper.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-2 text-base font-medium text-muted-foreground transition-colors hover:text-brand"
+          >
+            jktopper.com <span className="text-xs">↗</span>
+          </a>
+        </div>
         <a
           href="https://github.com/julearning/metadata"
           target="_blank"
@@ -273,9 +318,9 @@ export default function Home() {
           className="mt-8 inline-flex items-center gap-3 bg-surface px-8 py-4 text-base font-bold text-foreground transition-all duration-300 hover:bg-brand hover:text-white ring-1 ring-border/20"
         >
           <svg viewBox="0 0 48 48" fill="none" className="h-6 w-6">
-            <circle cx="24" cy="24" r="24" fill="#297EFF"/>
-            <circle cx="24" cy="24" r="16" fill="#fff"/>
-            <circle cx="24" cy="24" r="7.5" fill="#297EFF"/>
+            <circle cx="24" cy="24" r="24" fill="#297EFF" />
+            <circle cx="24" cy="24" r="16" fill="#fff" />
+            <circle cx="24" cy="24" r="7.5" fill="#297EFF" />
           </svg>
           Open Collective
         </a>
