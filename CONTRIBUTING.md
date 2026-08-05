@@ -94,8 +94,10 @@ Each file contains an array of document entries (multiple contributions per file
 ## Contributing documents
 
 The website has a built-in contribution flow at `/contribute`:
-1. **Single document** — Fill in title, URL, type, branch/semester/subject, and GitHub username
-2. **Multiple documents** — Paste a list of Google Drive links, configure each row with branch/semester/subject/type, confirm accessibility, and submit
+1. **Single document** — Fill in title, URL, type, and branch/semester/subject. A GitHub username is optional; if omitted, the contribution is credited to JU Learning.
+2. **Multiple documents** — Paste a list of Google Drive links, configure each row with branch/semester/subject/type, confirm accessibility, and submit. The GitHub username step is optional.
+
+Every contribution earns **₹10** — for PYQs, notes, documents, anything. A pull request is created automatically for each submission. To claim the reward, email **julearning.com@gmail.com** with your PR link; you'll be contacted soon and will definitely receive your money.
 
 Both modes create a pull request on the metadata repo automatically. No manual JSON editing required.
 

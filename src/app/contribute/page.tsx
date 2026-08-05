@@ -13,6 +13,9 @@ import { TYPE_LABELS } from "@/lib/types";
 const DRIVE_PATTERN = /^(https?:\/\/)?(drive\.google\.com\/(file|document|presentation|spreadsheets)\/d\/|docs\.google\.com\/(document|presentation|spreadsheets)\/d\/)/i;
 const CUSTOM_OPTION = "__custom__";
 
+/** Used when a contributor doesn't provide their own GitHub username. */
+const DEFAULT_CONTRIBUTOR = "julearning";
+
 const TYPES: Array<{ id: DocType | string; label: string }> = [
   { id: "handwritten", label: "Handwritten Notes" },
   { id: "digital", label: "Digital Notes" },
@@ -236,7 +239,8 @@ export default function ContributePage() {
   /* ---------- Single: submit ---------- */
   const newSourceValid = isNewSource ? (newSourceName.trim() && newSourceUrl.trim()) : true;
   const juValid = !isNewSource && source === "jammu-university" ? (resolvedBranch && resolvedSemester && resolvedSubject) : true;
-  const singleValid = title.trim() && url.trim() && urlStatus !== "invalid" && contributor.trim() && ghStatus !== "invalid" && juValid && newSourceValid;
+  const contributorOk = !contributor.trim() || ghStatus !== "invalid";
+  const singleValid = title.trim() && url.trim() && urlStatus !== "invalid" && contributorOk && juValid && newSourceValid;
 
   async function handleSingleSubmit(e: React.FormEvent) {
     e.preventDefault(); if (!singleValid) return;
@@ -256,7 +260,7 @@ export default function ContributePage() {
           url: url.trim(),
           thumbnailUrl: thumbnailUrl.trim() || undefined,
           type: docType,
-          contributor: contributor.trim() || "anonymous",
+          contributor: contributor.trim() || DEFAULT_CONTRIBUTOR,
           branch: resolvedBranch,
           semester: Number(resolvedSemester),
           subject: resolvedSubject,
@@ -304,7 +308,7 @@ export default function ContributePage() {
         url: r.url,
         type: r.detectedType || "mixed",
         subject: r.subject.trim(),
-        contributor: bulkUser,
+        contributor: bulkUser.trim() || DEFAULT_CONTRIBUTOR,
         branch: r.branch,
         semester: Number(r.semester),
         degree: "btech",
@@ -349,9 +353,10 @@ export default function ContributePage() {
 
   /* ---------- Single preview ---------- */
   const previewJson = useMemo(() => {
-    if (!title.trim() || !url.trim() || !contributor.trim()) return null;
+    if (!title.trim() || !url.trim()) return null;
     if (source === "jammu-university" && (!resolvedBranch || !resolvedSemester || !resolvedSubject)) return null;
-    const entry: Record<string, unknown> = { title: title.trim(), url: url.trim(), type: docType, contributor: contributor.trim() };
+    const previewContributor = contributor.trim() || DEFAULT_CONTRIBUTOR;
+    const entry: Record<string, unknown> = { title: title.trim(), url: url.trim(), type: docType, contributor: previewContributor };
     if (thumbnailUrl.trim()) entry.thumbnailUrl = thumbnailUrl.trim();
     if (source !== "jammu-university") entry.description = docType;
     entry.uploadedAt = new Date().toISOString().split("T")[0];
@@ -372,6 +377,21 @@ export default function ContributePage() {
           <button onClick={() => setMode("single")} className={`px-8 py-3 text-base font-bold transition-all ${mode === "single" ? "bg-brand text-white" : "bg-surface text-muted-foreground hover:text-foreground"}`}>Single document</button>
           <button onClick={() => setMode("bulk")} className={`px-8 py-3 text-base font-bold transition-all ${mode === "bulk" ? "bg-brand text-white" : "bg-surface text-muted-foreground hover:text-foreground"}`}>Multiple documents</button>
         </div>
+      </div>
+
+      {/* Reward notice */}
+      <div className="mt-8 bg-brand/5 px-6 py-5 ring-1 ring-brand/20">
+        <h2 className="text-lg font-bold text-foreground">Earn ₹10 per upload</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Every contribution earns you <strong className="text-foreground">₹10</strong> — whether it&apos;s a PYQ, handwritten notes,
+          digital notes, or any other document. Raise a pull request, and you&apos;ll be rewarded for helping your fellow students.
+          No GitHub account? That&apos;s fine — your upload is credited to JU Learning automatically.
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          To claim your reward, email us at{" "}
+          <a href="mailto:julearning.com@gmail.com" className="font-semibold text-brand underline">julearning.com@gmail.com</a>{" "}
+          with your pull request link. You&apos;ll be contacted soon and will definitely receive your money.
+        </p>
       </div>
 
       {/* ============================================================ */}
@@ -531,7 +551,7 @@ export default function ContributePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Your GitHub Username</label>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Your GitHub Username <span className="font-normal normal-case text-muted-foreground/40">(optional)</span></label>
                   <div className="relative">
                     <input type="text" value={contributor} onChange={e => handleGhChange(e.target.value)} onBlur={() => markTouched("contributor")}
                       placeholder="e.g., aryanbatras"
@@ -542,6 +562,7 @@ export default function ContributePage() {
                   </div>
                   {touched.contributor && contributor.trim() && ghStatus === "invalid" && <p className="mt-1 text-xs text-red-500">{ghMsg}</p>}
                   {touched.contributor && contributor.trim() && ghStatus === "valid" && <p className="mt-1 text-xs text-brand/80">{ghMsg}</p>}
+                  {touched.contributor && !contributor.trim() && <p className="mt-1 text-xs text-muted-foreground/60">Leave blank to credit the contribution to JU Learning.</p>}
                 </div>
               </div>
             </div>
@@ -568,6 +589,12 @@ export default function ContributePage() {
         <div className="mt-12 bg-surface p-10 text-center">
           <p className="text-2xl font-bold text-foreground">Pull Request Created!</p>
           <p className="mt-3 text-sm text-muted-foreground">A maintainer will review and merge it.</p>
+          <p className="mt-2 text-sm font-semibold text-brand">You&apos;ve earned ₹10 for this upload — thanks for contributing!</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            To claim it, email{" "}
+            <a href="mailto:julearning.com@gmail.com" className="font-semibold text-brand underline">julearning.com@gmail.com</a>{" "}
+            with your PR link. You&apos;ll be contacted soon and will definitely get your money.
+          </p>
           <a href={prUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block bg-brand px-8 py-4 text-lg font-bold text-white transition-opacity hover:opacity-90">View PR on GitHub ↗</a>
           <button onClick={resetSingle} className="mt-4 block w-full text-center text-sm text-muted-foreground transition-colors hover:text-foreground">Submit another document</button>
         </div>
@@ -590,8 +617,8 @@ export default function ContributePage() {
 
           {bulkStep === "username" && (
             <div>
-              <label className="block text-sm font-semibold text-foreground">Your GitHub Username</label>
-              <p className="mt-1 text-sm text-muted-foreground">This will be used as the contributor for every document.</p>
+              <label className="block text-sm font-semibold text-foreground">Your GitHub Username <span className="font-normal text-muted-foreground/60">(optional)</span></label>
+              <p className="mt-1 text-sm text-muted-foreground">This will be used as the contributor for every document. Leave it blank and the upload is credited to JU Learning.</p>
               <div className="relative max-w-md">
                 <input type="text" value={bulkUser} onChange={e => handleBulkGhChange(e.target.value)} placeholder="e.g., aryanbatras" autoFocus
                   className={`mt-3 w-full border-0 bg-surface px-5 py-4 pr-10 text-base text-foreground outline-none ring-1 transition-all focus:ring-2 ${bulkGhStatus === "invalid" ? "ring-red-300 focus:ring-red-400" : "ring-border/30 focus:ring-brand/20"}`} />
@@ -602,14 +629,14 @@ export default function ContributePage() {
               {bulkUser.trim() && bulkGhStatus === "invalid" && <p className="mt-2 text-xs text-red-500">{bulkGhMsg}</p>}
               {bulkUser.trim() && bulkGhStatus === "valid" && <p className="mt-2 text-xs text-brand/80">{bulkGhMsg}</p>}
               {bulkGhStatus === "checking" && <p className="mt-2 text-xs text-muted-foreground/60">Verifying...</p>}
-              <button onClick={() => bulkGhStatus !== "invalid" && bulkUser.trim() && setBulkStep("paste")} disabled={!bulkUser.trim() || bulkGhStatus === "invalid"}
+              <button onClick={() => bulkGhStatus !== "invalid" && setBulkStep("paste")} disabled={bulkGhStatus === "invalid"}
                 className="mt-6 bg-brand px-8 py-4 text-base font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed">Continue</button>
             </div>
           )}
 
           {bulkStep === "paste" && (
             <div>
-              <p className="mb-1 text-sm text-muted-foreground">Contributor: <span className="font-semibold text-foreground">{bulkUser}</span> · <button onClick={() => setBulkStep("username")} className="text-xs text-brand underline">change</button></p>
+              <p className="mb-1 text-sm text-muted-foreground">Contributor: <span className="font-semibold text-foreground">{bulkUser.trim() || DEFAULT_CONTRIBUTOR}</span> · <button onClick={() => setBulkStep("username")} className="text-xs text-brand underline">change</button></p>
               <label className="mt-6 block text-sm font-semibold text-foreground">Paste your Drive links here</label>
               <textarea value={rawText} onChange={e => setRawText(e.target.value)} placeholder="Paste the tab-separated list from Google Drive Link Getter..." rows={8} autoFocus
                 className="mt-2 w-full border-0 bg-surface px-5 py-4 text-sm text-foreground outline-none ring-1 ring-border/30 transition-all focus:ring-2 focus:ring-brand/20 resize-y" />
@@ -620,7 +647,7 @@ export default function ContributePage() {
 
           {bulkStep === "table" && (
             <div>
-              <p className="mb-4 text-sm text-muted-foreground">Contributor: <span className="font-semibold text-foreground">{bulkUser}</span> · <button onClick={() => setBulkStep("username")} className="text-xs text-brand underline">change</button> · <button onClick={() => { setBulkStep("paste"); setRows([]); }} className="text-xs text-brand underline">back to paste</button></p>
+              <p className="mb-4 text-sm text-muted-foreground">Contributor: <span className="font-semibold text-foreground">{bulkUser.trim() || DEFAULT_CONTRIBUTOR}</span> · <button onClick={() => setBulkStep("username")} className="text-xs text-brand underline">change</button> · <button onClick={() => { setBulkStep("paste"); setRows([]); }} className="text-xs text-brand underline">back to paste</button></p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -754,8 +781,14 @@ export default function ContributePage() {
       {mode === "bulk" && bulkStep === "done" && (
         <div className="mt-12 bg-surface p-10 text-center">
           <p className="text-3xl font-bold text-foreground">🎉 Congratulations!</p>
-          <p className="mt-2 text-lg text-foreground">You&apos;ve made your first open source contribution!</p>
+          <p className="mt-2 text-lg font-bold text-foreground">You&apos;ve made your first open source contribution!</p>
           <p className="mt-3 text-sm text-muted-foreground">{rows.length} document{rows.length !== 1 ? "s" : ""} submitted in a single PR.</p>
+          <p className="mt-2 text-sm font-semibold text-brand">You&apos;ve earned ₹{rows.length * 10} for this pull request — nice work!</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            To claim it, email{" "}
+            <a href="mailto:julearning.com@gmail.com" className="font-semibold text-brand underline">julearning.com@gmail.com</a>{" "}
+            with your PR link. You&apos;ll be contacted soon and will definitely get your money.
+          </p>
           <a href={bulkPrUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block bg-brand px-8 py-4 text-lg font-bold text-white transition-opacity hover:opacity-90">View PR on GitHub ↗</a>
           <div className="mt-6 flex items-center justify-center gap-2">
             <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(bulkPrUrl)}`}

@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 const GITHUB_OWNER = "julearning";
 const GITHUB_REPO = "metadata";
 
+/** Default contributor when none is provided. */
+const DEFAULT_CONTRIBUTOR = "julearning";
+
 interface SingleDoc {
   title: string;
   url: string;
@@ -145,7 +148,7 @@ export async function POST(request: NextRequest) {
 
     if (parsed.mode === "single") {
       const { title, url, thumbnailUrl, type, contributor, source, isNewSource, sourceName, sourceDescription, sourceUrl, sourceThumbnailUrl, branch, semester, subject } = parsed.data;
-      const ghUser = contributor.toLowerCase().replace(/[^a-z0-9-]/g, "") || "anonymous";
+      const ghUser = contributor.toLowerCase().replace(/[^a-z0-9-]/g, "") || DEFAULT_CONTRIBUTOR;
       const branchName = `contribute/${Date.now()}`;
       const sourceFolder = source || "jammu-university";
 
@@ -155,7 +158,7 @@ export async function POST(request: NextRequest) {
         title: title.trim(),
         url: url.trim(),
         type,
-        contributor: contributor.trim() || undefined,
+        contributor: contributor.trim() || DEFAULT_CONTRIBUTOR,
         uploadedAt: today,
       };
       if (thumbnailUrl) newEntry.thumbnailUrl = thumbnailUrl;
@@ -214,7 +217,7 @@ export async function POST(request: NextRequest) {
 
       // Create / update document file
       const base64Content = Buffer.from(mergedJson, "utf-8").toString("base64");
-      const frBody: Record<string, unknown> = { message: `Add ${title} by ${contributor || "anonymous"}`, content: base64Content, branch: branchName };
+      const frBody: Record<string, unknown> = { message: `Add ${title} by ${contributor || DEFAULT_CONTRIBUTOR}`, content: base64Content, branch: branchName };
       if (existingSha) frBody.sha = existingSha;
       const fr = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${docFilePath}`, {
         method: "PUT", headers,
@@ -228,7 +231,7 @@ export async function POST(request: NextRequest) {
 
       // Create PR
       const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://julearning.com";
-      const prBody = [`## Document`, ``, `**Title:** ${title}`, `**Type:** ${type}`, `**Contributor:** ${contributor || "anonymous"}`, `**Source:** ${sourceFolder}`];
+      const prBody = [`## Document`, ``, `**Title:** ${title}`, `**Type:** ${type}`, `**Contributor:** ${contributor || DEFAULT_CONTRIBUTOR}`, `**Source:** ${sourceFolder}`];
       if (isNewSource) {
         prBody.push(`**New Source:** ${sourceName}`, `**Source URL:** ${sourceUrl || ""}`);
       }
@@ -300,7 +303,7 @@ export async function POST(request: NextRequest) {
         title: d.title.trim(),
         url: d.url.trim(),
         type: d.type,
-        contributor: d.contributor.trim() || undefined,
+        contributor: d.contributor.trim() || DEFAULT_CONTRIBUTOR,
         uploadedAt: today,
       }));
 
@@ -327,7 +330,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         title: `Add ${docs.length} documents (bulk)`,
         head: branchName, base: "main",
-        body: [`## Multiple Documents Upload`, ``, `**Contributor:** ${bulkContributor || "anonymous"}`,
+        body: [`## Multiple Documents Upload`, ``, `**Contributor:** ${bulkContributor || DEFAULT_CONTRIBUTOR}`,
           `**Total documents:** ${docs.length}`, `**Files created:** ${filePaths.length}`,
           `**Locations:** ${[...uniqueLocations].join(", ")}`,
           ``, `**Files:**`, ...filePaths.map(p => `- \`${p}\``),
